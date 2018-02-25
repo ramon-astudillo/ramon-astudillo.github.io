@@ -1,6 +1,18 @@
 Ramón Fernandez Astudillo
 =========================
 
-I obtained the industrial engineering degree with specialization electronics in automatic regulation at the Escuela Politecnica Superior de Ingenieria de Gijon (Spain) in 2005, completing the last year and final thesis of this degree with an Erasmus scholarship at the Technische Universität Berlin. In 2006 I worked as an intern at Peiker Acustic researching model-based speech enhancement. On this same year I was awarded with a La Caixa and the German Academic Exchange Service (DAAD) scholarship for research towards the Ph.D. degree at the EMSP department of the Technische Universität Berlin. I obtained the title with distinction in 2010 in the fields of speech processing and robust automatic speech recognition. In my thesis "Integration of Short-Time Fourier Domain Speech Enhancement and Observation Uncertainty Techniques for Robust Automatic Speech Recognition" I formalized the concept of Short-Time Fourier Uncertainty Propagation (STFT-UP) and its relation to speech enhancement techniques such as the Wiener or Ephraim-Malah filters. In 2010 I was awarded with a FCT Post-Doctoral scholarship to join INESC-ID/L2F where I researched both robust speech recognition and robust natural language processing speech applications mixing deep learning and latent variable models. From 2016 I am Senior Research Scientist at Unbabel, keeping also an affiliation to INESC-ID as associate researcher. I am also co-founder of the Special Interest group for Robust Speech Processing (RoSP-SIG) and organizer of the LxMLS summer schools 2015 till present.
+It is hard to find things that do not interest me, but artificial and crowd intelligence seem particularly motivating in this moment in history.
 
-I am an ISCA/ACL member and review in signal processing and machine learning journals and congresses (IEEE-TASLP/SPL, CSL, Interspeech, NIPS and EMNLP among others). It is hard to find things that do not interest me, but artificial and crowd intelligence seem particularly motivating in this moment in history. 
+### 2016
+From 2016 I am Senior Research Scientist at Unbabel, keeping also an affiliation to INESC-ID as associate researcher. I am also co-founder of the Special Interest group for Robust Speech Processing (RoSP-SIG) and organizer of the LxMLS summer schools 2015 till present.
+
+### 2010
+I obtained the title with distinction in 2010 in the fields of speech processing and robust automatic speech recognition. In my thesis "Integration of Short-Time Fourier Domain Speech Enhancement and Observation Uncertainty Techniques for Robust Automatic Speech Recognition" I formalized the concept of Short-Time Fourier Uncertainty Propagation (STFT-UP) and its relation to speech enhancement techniques such as the Wiener or Ephraim-Malah filters.
+
+I was awarded with a FCT Post-Doctoral scholarship to join INESC-ID/L2F where I researched both robust speech recognition and robust natural language processing speech applications mixing deep learning and latent variable models.
+
+### 2006
+I worked as an intern at Peiker Acustic researching model-based speech enhancement. On this same year I was awarded with a La Caixa and the German Academic Exchange Service (DAAD) scholarship for research towards the Ph.D. degree at the EMSP department of the Technische Universität Berlin.
+
+### 2005
+I obtained the industrial engineering degree with specialization electronics in automatic regulation at the Escuela Politecnica Superior de Ingenieria de Gijon (Spain) in 2005, completing the last year and final thesis of this degree with an Erasmus scholarship at the Technische Universität Berlin.
