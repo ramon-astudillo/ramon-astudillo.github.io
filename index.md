@@ -4,7 +4,7 @@ Ramón Fernandez Astudillo
 <table>
     <tr>
         <td><img src="images/photo_2018.jpg" alt="img"/></td>
-        <td>Eleven years of research experience, two in the private sector. Multi-disciplinary publication record covering signal processing and machine learning applied to Automatic Speech Recognition (ASR) and Natural Language Processing (NLP). Focus on latent variable and deep learning techniques applied to robust inference and transfer learning. Participation in national and international projects in lead and technical roles. Co-organizer of the LxMLS summer school and creator of the deep learning days.</td>
+        <td>Eleven years of research experience, two in the private sector. </td>
     </tr>
 </table>
 
