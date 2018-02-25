@@ -4,7 +4,7 @@ Ramón Fernandez Astudillo
 <table>
     <tr>
         <td><img src="images/photo_2018.jpg" alt="img"/></td>
-        <td>Eleven years of research experience, two in the private sector. </td>
+        <td>Eleven years of research experience, two in the private sector. I obtained the industrial engineering degree with specialization electronics in automatic regulation at the Escuela Politecnica Superior de Ingenieria de Gijon (Spain) in 2005.</td>
     </tr>
 </table>
 
