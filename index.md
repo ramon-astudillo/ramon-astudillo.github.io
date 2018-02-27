@@ -3,7 +3,6 @@ Ramón Fernandez Astudillo
 
 <img align="left" src="images/photo_2018.jpg">
 
-### Me
 I am currently Senior Research Scientist at [Unbabel](http://www.unbabel.com/) and associate researcher at [INESC-ID](https://www.l2f.inesc-id.pt/w/Welcome_to_the_Spoken_Language_Systems_Lab) in Lisboa. I got here starting from signal processing, then speech recognition, natural language processing and now machine learning as a whole. I ended up spending verly large chunks of my life in Spain, Germany and now Portugal. It is hard to find things that do not interest me, but artificial and crowd intelligence seem particularly motivating in this moment in history. If this does feel short as a description see below.
 
 ### 2016
