@@ -1,7 +1,7 @@
 Ramón Fernandez Astudillo
 =========================
 
-| <img align="left" border="10" src="images/photo_2018.jpg"> | I am currently Senior Research Scientist at [Unbabel](http://www.unbabel.com/) and associate researcher at [INESC-ID](https://www.l2f.inesc-id.pt/w/Welcome_to_the_Spoken_Language_Systems_Lab) in Lisboa. I got here starting from signal processing, then speech recognition, natural language processing and now machine learning as a whole. I ended up spending verly large chunks of my life in Spain, Germany and now Portugal. It is hard to find things that do not interest me, but artificial and crowd intelligence seem particularly motivating in this moment in history. If this does feel short as a description see below. |
+<img align="left" width="110" src="images/photo_2018.jpg"> | I am currently Senior Research Scientist at [Unbabel](http://www.unbabel.com/) and associate researcher at [INESC-ID](https://www.l2f.inesc-id.pt/w/Welcome_to_the_Spoken_Language_Systems_Lab) in Lisboa. I got here starting from signal processing, then speech recognition, natural language processing and now machine learning as a whole. I ended up spending verly large chunks of my life in Spain, Germany and now Portugal. It is hard to find things that do not interest me, but artificial and crowd intelligence seem particularly motivating in this moment in history. If this does feel short as a description see below, there is a lot of stuff below.
 
 ### 2016
 From 2016 I am Senior Research Scientist at Unbabel, keeping also an affiliation to INESC-ID as associate researcher. I am also co-founder of the Special Interest group for Robust Speech Processing (RoSP-SIG) and organizer of the LxMLS summer schools 2015 till present.
