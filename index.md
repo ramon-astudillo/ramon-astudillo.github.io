@@ -14,7 +14,13 @@ From 2016 I am Senior Research Scientist at Unbabel, keeping also an affiliation
 Here I researched both robust speech recognition and robust natural language processing speech applications mixing deep learning and latent variable models (need to find time to elaborate on this).
 
 ### 2010
-I obtained the title with distinction in 2010 in the fields of speech processing and robust automatic speech recognition. In my thesis [Integration of Short-Time Fourier Domain Speech Enhancement and Observation Uncertainty Techniques for Robust Automatic Speech Recognition](https://d-nb.info/1005939284/34) I formalized the concept of Short-Time Fourier Uncertainty Propagation (STFT-UP) and its relation to speech enhancement techniques such as the Wiener or Ephraim-Malah filters. My doctor-fathers were Reinhold Orglmeister and Rainer Martin, but I mostly have a doctor-mother, Dorothea Kolossa, who developed the initial idea and helped me kickstart my thesis.
+I obtained the _Dr-Ing_ (PhD) title with distinction in 2010 in the fields of speech processing and robust automatic speech recognition. The thesis had the title 
+
+    Integration of Short-Time Fourier Domain Speech Enhancement and Observation Uncertainty Techniques for Robust Automatic Speech Recognition 
+
+\[[pdf](https://d-nb.info/1005939284/34)\] \[[code](https://github.com/ramon-astudillo/stft_up_tools)\]
+
+My doctor-fathers were Reinhold Orglmeister and Rainer Martin, but I mostly have a doctor-mother, Dorothea Kolossa, who developed the initial idea and helped me kickstart my thesis.
 
 In short, context for my thesis is the following
 
@@ -25,12 +31,10 @@ In short, context for my thesis is the following
 
 This was a relatively active topic in robust ASR at the time, with multiple competing approaches (feature/model based). My thesis contributions were basically
 
-- Notice that the Ephraim-Malah filters can be seen as propagating the uncertainty of the posterior distribution associated to a Wiener Filter in STFT domain, through the amplitude and log-amplitude non-linearities [IEEE TASLP](http://ieeexplore.ieee.org/abstract/document/6423820/).
-- Exploiting this fact to transform a complex-Gaussian distributed model of the STFT into MFCC (log-Mel) and RASTA-PLP, deriving first and second order moments [Book Chapter](https://pdfs.semanticscholar.org/d32d/72e4dcc59bd014fb9f6428824df035fecaf4.pdf).
-- Exploiting this fact to derive extensions of super-Gausian prior MMSE estimators based on mixture models [IEEE SPL](http://ieeexplore.ieee.org/abstract/document/5504821/).
-- Showing that this can improve the robustness of ASR systems without retraining, including for performant methods such as the ETSI advanced front-end [IEEE STSP](http://ieeexplore.ieee.org/abstract/document/5504821/).
-
-If you are interested, you can find the code for my work on STFT Uncertainty Propagation (STFT-UP) [here](https://github.com/ramon-astudillo/stft_up_tools) 
+- Notice that the Ephraim-Malah filters can be seen as propagating the uncertainty of the posterior distribution associated to a Wiener Filter in STFT domain, through the amplitude and log-amplitude non-linearities \[[IEEE TASLP](http://ieeexplore.ieee.org/abstract/document/6423820/)\].
+- Exploiting this fact to transform a complex-Gaussian distributed model of the STFT into MFCC (log-Mel) and RASTA-PLP, deriving first and second order moments \[[Book Chapter](https://pdfs.semanticscholar.org/d32d/72e4dcc59bd014fb9f6428824df035fecaf4.pdf)\].
+- Exploiting this fact to derive extensions of super-Gausian prior MMSE estimators based on mixture models \[[IEEE SPL](http://ieeexplore.ieee.org/abstract/document/5504821/)\].
+- Showing that this can improve the robustness of ASR systems without retraining, including for performant methods such as the ETSI advanced front-end \[[IEEE STSP](http://ieeexplore.ieee.org/abstract/document/5504821/)\].
 
 Aside from my PhD, in my time in Berlin I also got to tutor the Neural Networks Seminar of EMSP, supervised Phillip Mandelartz's Thesis and helped other students in the department with their projects and theses.
 
