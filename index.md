@@ -14,7 +14,7 @@ From 2016 I am Senior Research Scientist at Unbabel, keeping also an affiliation
 Here I researched both robust speech recognition and robust natural language processing speech applications mixing deep learning and latent variable models (need to find time to elaborate on this).
 
 ### 2010
-I obtained the _Dr-Ing_ (PhD) title with distinction in 2010 in the fields of speech processing and robust automatic speech recognition. The thesis had the title _Integration of Short-Time Fourier Domain Speech Enhancement and Observation Uncertainty Techniques for Robust Automatic Speech Recognition_ \[[pdf](https://d-nb.info/1005939284/34)\] \[[code](https://github.com/ramon-astudillo/stft_up_tools)\]
+I obtained the *Dr-Ing* (PhD) title with distinction in 2010 in the fields of speech processing and robust automatic speech recognition. The thesis had the title *Integration of Short-Time Fourier Domain Speech Enhancement and Observation Uncertainty Techniques for Robust Automatic Speech Recognition* \[[pdf](https://d-nb.info/1005939284/34)\] \[[code](https://github.com/ramon-astudillo/stft_up_tools)\]
 
 My doctor-fathers were Reinhold Orglmeister and Rainer Martin, but I mostly have a doctor-mother, Dorothea Kolossa, who developed the initial idea and helped me kickstart my thesis.
 
@@ -40,7 +40,7 @@ This was a relatively active topic in robust ASR at the time, with multiple comp
 
 Aside from my PhD, in my time in Berlin I also got to tutor the Neural Networks Seminar of EMSP, supervised Phillip Mandelartz's Thesis and helped other students in the department with their projects and theses.
 
-After defending my thesis I still spent some months at EMSP finishing papers. While finishing, a causality led me to discover Isabel Trancoso's department at INESC-ID in Lisbon. After reading João Graças and Diamantino Caseiros papers, I decided to apply for a post-doctoral grant to transition from speech to natural language processing. Luckily, I was awarded with a 3-6 year FCT Post-Doctoral scholarship to join INESC-ID/L2F. 
+After defending my thesis I still spent some months at EMSP finishing papers. While finishing, a causality led me to discover Isabel Trancoso's department at INESC-ID in Lisbon. After reading João Graças and Diamantino Caseiros papers, I decided to apply for a post-doctoral grant to transition from speech to natural language processing. Luckily, I was awarded with a 3+3 year FCT Post-Doctoral scholarship to join INESC-ID/L2F. 
 
 ### 2006
 I worked as an intern at Peiker Acustic for six months with the aid of a Leonardo grant and in collaboration with the TU-Berlin. The output was a spectral codebook-based speech reconstruction algorithm. Aside from realising how hard is to write a tech report in German, I also got to know better the Minimum Mean Spectral Amplitude and Log Spectral Amplitude Estimators (also known and Ephraim-Malah filters). 
