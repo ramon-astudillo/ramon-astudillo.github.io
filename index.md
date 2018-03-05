@@ -14,7 +14,7 @@ From 2016 I am Senior Research Scientist at Unbabel, keeping also an affiliation
 Here I researched both robust speech recognition and robust natural language processing speech applications mixing deep learning and latent variable models (need to find time to elaborate on this).
 
 ### 2010
-I obtained the *Dr-Ing* (PhD) title with distinction in 2010 in the fields of speech processing and robust automatic speech recognition. The thesis had the title *Integration of Short-Time Fourier Domain Speech Enhancement and Observation Uncertainty Techniques for Robust Automatic Speech Recognition* \[[pdf](https://d-nb.info/1005939284/34)\] \[[code](https://github.com/ramon-astudillo/stft_up_tools)\]
+I obtained the *Dr-Ing* (PhD) title with distinction in 2010 in the fields of speech processing and robust automatic speech recognition. The thesis had the title **Integration of Short-Time Fourier Domain Speech Enhancement and Observation Uncertainty Techniques for Robust Automatic Speech Recognition** \[[pdf](https://d-nb.info/1005939284/34)\] \[[code](https://github.com/ramon-astudillo/stft_up_tools)\]
 
 My doctor-fathers were Reinhold Orglmeister and Rainer Martin, but I mostly have a doctor-mother, Dorothea Kolossa, who developed the initial idea and helped me kickstart my thesis.
 
