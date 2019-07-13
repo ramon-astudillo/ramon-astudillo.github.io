@@ -6,7 +6,7 @@ Ramón Fernandez Astudillo
 \[[LinkedIn](https://www.linkedin.com/in/ramonastudillo/)\]
 \[[Twitter](https://twitter.com/RamonAstudill12)\]
 
-I am currently Research Staff Member at IBM Research AI in the T. J. Watson research center in Yorktown Heights, New York. Before this I  was senior Research Scientist at [Unbabel](http://www.unbabel.com/) and associate researcher at [INESC-ID](https://www.l2f.inesc-id.pt/w/Welcome_to_the_Spoken_Language_Systems_Lab) in Lisboa. I got here starting from signal processing, then speech recognition, natural language processing and now machine learning as a whole. I ended up spending very large chunks of my life in Spain, Germany and Portugal and recently moved to the Unites States. It is hard to find things that do not interest me, but artificial and crowd intelligence seem particularly motivating in this moment in history. If this does feel short as a description, see below.
+I am currently Research Staff Member at IBM Research AI in the [T. J. Watson research center in Yorktown Heights](https://www.research.ibm.com/labs/watson/visitor.shtml), New York. Before this I  was senior Research Scientist at [Unbabel](http://www.unbabel.com/) and associate researcher at [INESC-ID](https://www.l2f.inesc-id.pt/w/Welcome_to_the_Spoken_Language_Systems_Lab) in Lisboa. I got here starting from signal processing, then speech recognition, natural language processing and now machine learning as a whole. I ended up spending very large chunks of my life in Spain, Germany and Portugal and recently moved to the Unites States. It is hard to find things that do not interest me, but artificial and crowd intelligence seem particularly motivating in this moment in history. If this does feel short as a description, see below.
 
 ### 2019
 
