@@ -16,7 +16,7 @@ I am currently Research Staff Member at IBM Research AI in the T. J. Watson rese
 
 ### 2018
 
-- Was senior member at Takaaki Hori and Shinji Watanabe's team in the [5th Jelinek Summer Workshop (JSALT 2018)](https://www.clsp.jhu.edu/workshops/18-workshop/multilingual-end-end-asr-incomplete-data/) at Johns Hopkins University. Everybody needs to do JSALT a least once in live.
+- Was senior member at Takaaki Hori and Shinji Watanabe's team in the [5th Jelinek Summer Workshop (JSALT 2018)](https://www.clsp.jhu.edu/workshops/18-workshop/multilingual-end-end-asr-incomplete-data/) at Johns Hopkins University. Everybody needs to do JSALT a least once in life.
 
 - After two and a half years, its time to leave [Unbabel](http://www.unbabel.com/). What a ride. From 28 employess to 130, funding rounds A and B and a concentrated dose of the start-up life. A privilige to have been in a start-up that hires such amazing talent. 
 
@@ -27,6 +27,8 @@ I am currently Research Staff Member at IBM Research AI in the T. J. Watson rese
 ### 2010
 
 - Joined the [Spoken Language Systems lab at INESC-ID](https://www.l2f.inesc-id.pt/w/Welcome_to_the_Spoken_Language_Systems_Lab) with and FCT grant. Looking forward to keep my work on uncertainty and learning about natural language processing
+
+#### Phd
 
 Obtained the Dr-Ing (PhD) title with distinction in 2010 in the fields of speech processing and robust automatic speech recognition. The thesis had the title **Integration of Short-Time Fourier Domain Speech Enhancement and Observation Uncertainty Techniques for Robust Automatic Speech Recognition**
 \[[pdf](https://d-nb.info/1005939284/34)\] \[[code](https://github.com/ramon-astudillo/stft_up_tools)\]
