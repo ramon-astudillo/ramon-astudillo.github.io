@@ -13,24 +13,23 @@ I am currently Research Staff Member at IBM Research AI in the [T. J. Watson res
 - Joined IBM research AI in NY! will be working as Research Staff Member at the Multilingual Natural Language Processing (MNLP) group in the [T. J. Watson research center in Yorktown Heights](https://www.research.ibm.com/labs/watson/visitor.shtml).
 
 - We got a number of interesting papers out the JSALT2018 workshop work. This follows the line of cycle-GANs in image or Dual Learning in MT but applied to Automatic Speech Recognition using Attention models 
-
-    - Back-translation for ASR [ASRU2018](https://ieeexplore.ieee.org/stamp/stamp.jsp?arnumber=8639619)
-    - Cycle-consistency for End-to-end ASR [ICASSP2019](https://arxiv.org/abs/1811.01690)
-    - Self-supervised learning from speech and text [Interspeech2019](https://arxiv.org/abs/1905.01152)
+    - Back-translation for ASR \[[ASRU2018](https://ieeexplore.ieee.org/stamp/stamp.jsp?arnumber=8639619)\]
+    - Cycle-consistency for End-to-end ASR \[[ICASSP2019](https://arxiv.org/abs/1811.01690)\]
+    - Self-supervised learning from speech and text \[[Interspeech2019](https://arxiv.org/abs/1905.01152)\]
 
 - After 9 great years as Research Associate at the [Spoken Language Systems lab at INESC-ID](https://www.l2f.inesc-id.pt/w/Welcome_to_the_Spoken_Language_Systems_Lab) in Lisbon I have to (reluctantly!) leave this affiliation to move to my next step. I leave great friends from which I have learned a lot, an amazing infrastracture and fun memories.
 
 ### 2018
 
-- Talk at some company in Berlin about the current state of Quality Estimation for Machine Translation (some details about our WMT 2018 work) [pdf](https://www.dropbox.com/s/js44ga3ulwbdsie/nqe.pdf?dl=0)
+- Talk at some company in Berlin about the current state of Quality Estimation for Machine Translation (some details about our WMT 2018 work) \[[pdf](https://www.dropbox.com/s/js44ga3ulwbdsie/nqe.pdf?dl=0)\]
 
 - Everybody should do JSALT a least once in life. Joined Takaaki Hori and Shinji Watanabe's team as senior member for the [5th Jelinek Summer Workshop (JSALT2018)](https://www.clsp.jhu.edu/workshops/18-workshop/multilingual-end-end-asr-incomplete-data/) at Johns Hopkins University. Investigated cicle-consistency losses to learn from unpaired text and speech.
 
 - After 2.5 years, its time to leave [Unbabel](http://www.unbabel.com/). What a ride. From 28 employess to 130, funding rounds A and B and a concentrated dose of the start-up life. A privilige to have been in a start-up that hires such amazing talent. 
 
-- Talk at university of Hildeberg about the impact of deep learning in Spoken Language Translation (mostly about my separate knowlegde of ASR and MT) [pdf](https://www.dropbox.com/s/dira36wh9dmnill/nslt.pdf?dl=0)
+- Talk at university of Hildeberg about the impact of deep learning in Spoken Language Translation (mostly about my separate knowlegde of ASR and MT) \[[pdf](https://www.dropbox.com/s/dira36wh9dmnill/nslt.pdf?dl=0)\]
 
-- Co-created this years word and document-level Quality Estimation (QE) tasks at WMT2018. Code to create the word-level QE for NMT corpus with (takes adequacy errors into account) [code](https://github.com/ramon-astudillo/word-level-qe-corpus-builder) and paper [WMT2018](https://www.aclweb.org/anthology/W18-6451)
+- Co-created this years word and document-level Quality Estimation (QE) tasks at WMT2018. Code to create the word-level QE for NMT corpus with (takes adequacy errors into account) \[[code](https://github.com/ramon-astudillo/word-level-qe-corpus-builder) and paper [WMT2018](https://www.aclweb.org/anthology/W18-6451)\]
 
 ### 2015
 
