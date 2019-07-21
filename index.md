@@ -52,7 +52,7 @@ I am currently Research Staff Member at IBM Research AI in the [T. J. Watson res
 
 ### 2012
 
-- Emmanuel Vincent and I funded the ISCA Robust Speech Processing Special Interest group (RoSP-SIG) \[[website](https://wiki.inria.fr/rosp/Main_Page)\]
+- Emmanuel Vincent and I __funded the ISCA Robust Speech Processing Special Interest group (RoSP-SIG)__ \[[website](https://wiki.inria.fr/rosp/Main_Page)\]
 
 - __Held a tutorial__ on Uncertainty Handling for Robust Speech Recognition with Li Deng and Emmanuel Vincent at Interspeech 2012 \[[slides](https://homepages.loria.fr/evincent/talks/tutorialIS12.pdf)\] (follow-up from my thesis)
 
