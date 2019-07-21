@@ -12,7 +12,7 @@ I am currently Research Staff Member at IBM Research AI in the [T. J. Watson res
 
 - Follow up work from JSALT2018 workshop got __shortlisted for best student paper__ award at Interspeech 2019!. This follows cycle-GANs in image or Dual Learning in MT but applied to end-to-end ASR \[[preprint](https://arxiv.org/abs/1905.01152)\]
 
-- __Joined IBM research AI__ in NY! Will be Research Staff Member at the Multilingual Natural Language Processing (MNLP) group in the [T. J. Watson research center in Yorktown Heights](https://www.research.ibm.com/labs/watson/visitor.shtml).
+- __Joined IBM research AI in NY__! Will be Research Staff Member at the Multilingual Natural Language Processing (MNLP) group in the [T. J. Watson research center in Yorktown Heights](https://www.research.ibm.com/labs/watson/visitor.shtml).
 
 - After 9 great years as Research Associate at the [Spoken Language Systems lab at INESC-ID](https://www.l2f.inesc-id.pt/w/Welcome_to_the_Spoken_Language_Systems_Lab) in Lisbon I have to (reluctantly!) __leave INESC-ID__ to move to my next step. I leave great friends from which I have learned a lot, an amazing infrastracture and fun memories.
 
