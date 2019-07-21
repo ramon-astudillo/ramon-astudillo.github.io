@@ -30,13 +30,11 @@ I am currently Research Staff Member at IBM Research AI in the [T. J. Watson res
 
 - __Co-created__ this years word and document-level Quality Estimation (QE) WMT tasks \[[WMT2018 paper](https://www.aclweb.org/anthology/W18-6451)\]. Corpus builder for word-level QE with optional adequacy task (thought for NMT) \[[code](https://github.com/ramon-astudillo/word-level-qe-corpus-builder)\]
 
-### 2017
-
-- Christian Huemmer got the __best paper award__ at HCSMA 2017 \[[preprint](https://arxiv.org/pdf/1609.02082.pdf)\]
+- __Co-organized__ the Automatic Post-Editing and Quality Estimation workshop at AMTA 2018 \[[slides](https://www.aclweb.org/anthology/W18-2100)\]
 
 ### 2016
 
-- INESC-ID/L2F fgot the __winning system__ for Compare 2016 Native Language Identification task \[[paper](https://pdfs.semanticscholar.org/06ed/d212e9ab4225e1cde5ecd5c395792195178f.pdf)\]
+- INESC-ID/L2F got the __winning system__ for Compare 2016 Native Language Identification task \[[paper](https://pdfs.semanticscholar.org/06ed/d212e9ab4225e1cde5ecd5c395792195178f.pdf)\]
 
 - Unbabel got the __winning system__ for WMT 2016 word-level Quality Estimation task \[[paper](https://www.aclweb.org/anthology/W16-2387)\]
 
