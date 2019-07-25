@@ -6,7 +6,7 @@ Ramón Fernandez Astudillo
 \[[LinkedIn](https://www.linkedin.com/in/ramonastudillo/)\]
 \[[Twitter](https://twitter.com/RamonAstudill12)\]
 
-I am currently Research Staff Member at IBM Research AI in the [T. J. Watson research center in Yorktown Heights](https://www.research.ibm.com/labs/watson/visitor.shtml), New York. Before this I  was senior Research Scientist at [Unbabel](http://www.unbabel.com/) and associate researcher at [INESC-ID](https://www.l2f.inesc-id.pt/w/Welcome_to_the_Spoken_Language_Systems_Lab) in Lisboa and PhD candidate at [TU Berlin](https://www.emsp.tu-berlin.de/menue/startseite/). I got here starting from signal processing, then speech recognition and then natural language processing. While at it, deep learning happened. I ended up spending very large chunks of my life in Spain, Germany and Portugal and recently moved to the Unites States. It is hard to find things that do not interest me, but artificial and crowd intelligence seem particularly motivating in this moment in history. If this does feel short as a description, see below.
+I am currently Research Staff Member at IBM Research AI in the [T. J. Watson research center in Yorktown Heights](https://www.research.ibm.com/labs/watson/visitor.shtml), New York. Before this I  was senior Research Scientist at [Unbabel](http://www.unbabel.com/) and associate researcher at [INESC-ID](https://www.l2f.inesc-id.pt/w/Welcome_to_the_Spoken_Language_Systems_Lab) in Lisboa and PhD candidate at [TU Berlin](https://www.emsp.tu-berlin.de/menue/startseite/). I got here starting from signal processing, then speech recognition and then natural language processing. While at it, deep learning happened. I ended up spending very large chunks of my life in Spain, Germany and Portugal and recently moved to the Unites States. It is hard to find things that do not interest me, but artificial and crowd intelligence seem particularly motivating in this moment in history. 
 
 ### 2019
 
@@ -28,7 +28,7 @@ I am currently Research Staff Member at IBM Research AI in the [T. J. Watson res
 
 - __Talked__ at university of Hildeberg about the impact of deep learning in Spoken Language Translation (mostly about my separate knowledge of ASR and MT) \[[slides](https://www.dropbox.com/s/dira36wh9dmnill/nslt.pdf?dl=0)\]
 
-- __Co-created__ this years word and document-level Quality Estimation (QE) WMT tasks \[[WMT2018 paper](https://www.aclweb.org/anthology/W18-6451)\]. Corpus builder for word-level QE with optional adequacy task (thought for NMT) \[[code](https://github.com/ramon-astudillo/word-level-qe-corpus-builder)\]
+- __Co-created__ this years word and document-level Quality Estimation (QE) WMT tasks \[[paper](https://www.aclweb.org/anthology/W18-6451)\]. Corpus builder for word-level QE with optional adequacy task (thought for NMT) \[[code](https://github.com/ramon-astudillo/word-level-qe-corpus-builder)\]
 
 - __Co-organized__ the Automatic Post-Editing and Quality Estimation workshop at AMTA 2018 \[[slides](https://www.aclweb.org/anthology/W18-2100)\]
 
@@ -46,9 +46,7 @@ I am currently Research Staff Member at IBM Research AI in the [T. J. Watson res
 
 - Was __visiting scholar__ at the Language Technologies institute in Carnegie Melon University with the always inspiring Bhiksha Raj. Gave a talk about observation uncertainty in neural networks \[[slides](https://www.dropbox.com/s/27bo6cln3nd1tso/cmu_mlpou.pdf?dl=0)\]
 
-- Silvio Moreira got the __winning system__ for SemEval 2015 task E \[[paper](https://www.aclweb.org/anthology/S15-2102)\]. 
-
-- We also got __best late-breaking system__ for task A with a transfer learning approach \[[paper](https://www.aclweb.org/anthology/P15-1104),[code](https://github.com/ramon-astudillo/NLSE)\]
+- Silvio Moreira got the __winning system__ for SemEval 2015 task E \[[paper](https://www.aclweb.org/anthology/S15-2102)\]. Also got __best late-breaking system__ for task A with a transfer learning approach \[[paper](https://www.aclweb.org/anthology/P15-1104),[code](https://github.com/ramon-astudillo/NLSE)\]
 
 ### 2012
 
