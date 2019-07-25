@@ -50,7 +50,7 @@ I am currently Research Staff Member at IBM Research AI in the [T. J. Watson res
 
 ### 2012
 
-- Emmanuel Vincent and I __funded__ the ISCA Robust Speech Processing Special Interest group (RoSP-SIG) \[[website](https://wiki.inria.fr/rosp/Main_Page)\]
+- Emmanuel Vincent and I __fuonded__ the ISCA Robust Speech Processing Special Interest group (RoSP-SIG) \[[website](https://wiki.inria.fr/rosp/Main_Page)\]
 
 - __Held a tutorial__ on Uncertainty Handling for Robust Speech Recognition with Li Deng and Emmanuel Vincent at Interspeech 2012 \[[slides](https://homepages.loria.fr/evincent/talks/tutorialIS12.pdf)\] (follow-up from my thesis)
 
@@ -62,7 +62,10 @@ I am currently Research Staff Member at IBM Research AI in the [T. J. Watson res
 
 #### Phd
 
-Obtained the Dr-Ing (PhD) title with distinction in 2010 in the fields of speech processing and robust automatic speech recognition. The thesis had the title **Integration of Short-Time Fourier Domain Speech Enhancement and Observation Uncertainty Techniques for Robust Automatic Speech Recognition**
+Obtained the Dr-Ing (PhD) title with distinction in 2010 in the fields of speech processing and robust automatic speech recognition with the thesis
+
+**Integration of Short-Time Fourier Domain Speech Enhancement and Observation Uncertainty Techniques for Robust Automatic Speech Recognition**
+
 \[[pdf](https://d-nb.info/1005939284/34)\] \[[code](https://github.com/ramon-astudillo/stft_up_tools)\]
 
 My doctor-fathers were Reinhold Orglmeister and Rainer Martin, but I mostly have a doctor-mother, Dorothea Kolossa, who developed the initial idea and helped me kickstart my thesis.
