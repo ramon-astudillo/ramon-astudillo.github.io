@@ -10,23 +10,23 @@ I am currently Research Staff Member at IBM Research AI in the [T. J. Watson res
 
 ### 2021
 
-- Jiawei Zhous [Structured-BART](https://aclanthology.org/2021.emnlp-main.507/) shows how BART can be fine-tuned to interiorize a parsers-state, yielding a new SoTA for AMR parsing and built-in aligners, at EMNLP 2021
+- Jiawei Zhou's [Structured-BART](https://aclanthology.org/2021.emnlp-main.507/) shows how BART can be fine-tuned to interiorize a parsers-state, yielding a __new SoTA__ for AMR parsing and built-in aligners, at EMNLP 2021
 
-- Jiawei Zhous [Action Pointer Transformer (APT)](https://aclanthology.org/2021.naacl-main.443/) decouples node and token representations yielding a lighter, more performant, 100% coverage oracle for AMR parsing, at NAACL 2021
+- Jiawei Zhou's [Action Pointer Transformer (APT)](https://aclanthology.org/2021.naacl-main.443/) decouples node and token representations yielding a lighter, more performant, 100% coverage oracle for AMR parsing, at NAACL 2021
 
-- Peng Quian's [work](https://aclanthology.org/2021.acl-long.289/) revisits Generative Parsing and Structural Scaffolds and shows the can increase linguistic generalization in Transformers, work with Prof. Roger Levi, under the MIT-IBM program.
+- Peng Quian's [work](https://aclanthology.org/2021.acl-long.289/) revisits Generative Parsing and Structural Scaffolds and shows the can increase linguistic generalization in Transformers, work with Prof. Roger Levi, under the __MIT-IBM program__.
 
-- We release APT (`v0.4.2`) and Structured-BART (`v0.5.1`) within `transition-amr-parser` [https://github.com/IBM/transition-amr-parser](https://github.com/IBM/transition-amr-parser)
+- We __release as OSS__ APT (`v0.4.2`) and Structured-BART (`v0.5.1`) within `transition-amr-parser` [https://github.com/IBM/transition-amr-parser](https://github.com/IBM/transition-amr-parser)
 
 ### 2020
 
-- Manuel Mager's [GPT-too](https://aclanthology.org/2020.acl-main.167/) paper reaches a new SoTA in AMR-to-txt, presented at ACL 2020 
+- Manuel Mager's [GPT-too](https://aclanthology.org/2020.acl-main.167/) paper reaches a __new SoTA in AMR-to-txt__, presented at ACL 2020 
 
-- We achieve [SoTA in AMR-parsing](https://aclanthology.org/2020.findings-emnlp.288/) by leveraging self-learning (silver parses, AMR-to-text, oracle mining) and cycle consistency
+- We achieve __new SoTA in AMR-parsing__ by [leveraging self-learning](https://aclanthology.org/2020.findings-emnlp.288/) (silver parses, AMR-to-text, oracle mining) and cycle consistency.
 
-- We release our core tool, the `transition-amr-parser` as open source (Apache 2), with an implementation of the stack-Transformer in version `v0.3.4` [https://github.com/IBM/transition-amr-parser](https://github.com/IBM/transition-amr-parser)
+- We __release as open source__ (Apache 2) our core tool, the `transition-amr-parser`, implementing the stack-Transformer (`v0.3.4`) [https://github.com/IBM/transition-amr-parser](https://github.com/IBM/transition-amr-parser).
 
-- Thrilled to start a collaboration with Professor Roger Levi of MIT's Department of Brain and Cognitive Sciences on Neuro-Symbolic methods under the MIT-IBM collaboration program
+- Thrilled to start a __collaboration with MIT's Professor Roger Levi__ from the Department of Brain and Cognitive Sciences on is Neuro-Symbolic methods (MIT-IBM program).
 
 ### 2019
 
