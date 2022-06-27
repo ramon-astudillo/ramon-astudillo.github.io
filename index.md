@@ -10,11 +10,11 @@ I am currently Research Staff Member at IBM Research AI in the [T. J. Watson res
 
 ### 2021
 
-- Jiawei Zhou's [Structured-BART](https://aclanthology.org/2021.emnlp-main.507/) shows how BART can be fine-tuned to interiorize a parsers-state, yielding a __new SoTA__ for AMR parsing and built-in aligners, at EMNLP 2021
+- Jiawei Zhou's [Structured-BART](https://aclanthology.org/2021.emnlp-main.507/) shows how BART can be fine-tuned to interiorize a parser's state, yielding a __new SoTA for AMR parsing__ and built-in alignments, at EMNLP 2021
 
 - Jiawei Zhou's [Action Pointer Transformer (APT)](https://aclanthology.org/2021.naacl-main.443/) decouples node and token representations yielding a lighter, more performant, 100% coverage oracle for AMR parsing, at NAACL 2021
 
-- Peng Quian's [work](https://aclanthology.org/2021.acl-long.289/) revisits Generative Parsing and Structural Scaffolds and shows the can increase linguistic generalization in Transformers, work with Prof. Roger Levi, under the __MIT-IBM program__.
+- Peng Quian's [revisits](https://aclanthology.org/2021.acl-long.289/) Generative Parsing and Structural Scaffolds, showing they can increase linguistic generalization in Transformers, work with Prof. Roger Levi, under the __MIT-IBM program__, at ACL 2021
 
 - We __release as OSS__ APT (`v0.4.2`) and Structured-BART (`v0.5.1`) within `transition-amr-parser` [https://github.com/IBM/transition-amr-parser](https://github.com/IBM/transition-amr-parser)
 
