@@ -6,7 +6,9 @@ Ramón Fernandez Astudillo
 \[[LinkedIn](https://www.linkedin.com/in/ramonastudillo/)\]
 \[[Twitter](https://twitter.com/RamonAstudill12)\]
 
-I am currently Research Staff Member at IBM Research AI in the [T. J. Watson research center in Yorktown Heights](https://www.research.ibm.com/labs/watson/visitor.shtml), New York. Before this I  was senior Research Scientist at [Unbabel](http://www.unbabel.com/) and associate researcher at [INESC-ID](https://www.l2f.inesc-id.pt/w/Welcome_to_the_Spoken_Language_Systems_Lab) in Lisboa and before that PhD candidate at [TU Berlin](https://www.emsp.tu-berlin.de/menue/startseite/). I got here starting from signal processing, then speech recognition and then natural language processing. While at it, deep learning happened. I ended up spending very large chunks of my life in Spain, Germany and Portugal and now in the Unites States. It is hard to find things that do not interest me, but artificial and crowd intelligence seem particularly motivating in this moment in history. 
+I am currently Principal Research Staff Member at IBM Research AI in the [T. J. Watson research center in Yorktown Heights](https://www.research.ibm.com/labs/watson/visitor.shtml), New York. Before this I  was senior Research Scientist at [Unbabel](http://www.unbabel.com/) and associate researcher at [INESC-ID](https://www.l2f.inesc-id.pt/w/Welcome_to_the_Spoken_Language_Systems_Lab) in Lisboa and before that PhD candidate at [TU Berlin](https://www.emsp.tu-berlin.de/menue/startseite/). I got here starting from signal processing, then speech recognition and then natural language processing. While at it, deep learning happened. I ended up spending very large chunks of my life in Spain, Germany and Portugal and now in the Unites States. It is hard to find things that do not interest me, but artificial and crowd intelligence seem particularly motivating in this moment in history. 
+
+### 2022 Principal Research Scientist
 
 ### 2021
 
@@ -28,7 +30,7 @@ I am currently Research Staff Member at IBM Research AI in the [T. J. Watson res
 
 - Thrilled to start a __collaboration with MIT's Professor Roger Levi__ from the Department of Brain and Cognitive Sciences on is Neuro-Symbolic methods (MIT-IBM program).
 
-### 2019
+### 2019 Research Staff Member
 
 - Murali Karthik's paper __shortlisted for best student paper__ at Interspeech 2019!. JSALT2018 follow-up applying cycle-consistency to fine-tune end-to-end ASR with unpaired speech and text \[[preprint](https://arxiv.org/abs/1905.01152)\]
 
@@ -52,7 +54,7 @@ I am currently Research Staff Member at IBM Research AI in the [T. J. Watson res
 
 - __Co-organized__ the Automatic Post-Editing and Quality Estimation workshop at AMTA 2018 \[[slides](https://www.aclweb.org/anthology/W18-2100)\]
 
-### 2016
+### 2016 Senior Research Scientist
 
 - INESC-ID/L2F got the __winning system__ for Compare 2016 Native Language Identification task \[[paper](https://pdfs.semanticscholar.org/06ed/d212e9ab4225e1cde5ecd5c395792195178f.pdf)\]
 
@@ -74,7 +76,7 @@ I am currently Research Staff Member at IBM Research AI in the [T. J. Watson res
 
 - __Held a tutorial__ on Uncertainty Handling for Robust Speech Recognition with Li Deng and Emmanuel Vincent at Interspeech 2012 \[[slides](https://homepages.loria.fr/evincent/talks/tutorialIS12.pdf)\] (follow-up from my thesis)
 
-### 2010
+### 2010 Post-doctoral Researcher
 
 - __best area paper award__ in Robust Speech Recognition (shortlist SPECOM best paper award) attaining MMSE estimates with Uncertainty Propagation for ASR \[[paper](https://pdfs.semanticscholar.org/91c3/bd9e42a6b7e6669ff1f1656b2f109c10f21f.pdf),[code](https://github.com/ramon-astudillo/stft_up_tools)\]
 
@@ -118,7 +120,7 @@ I worked as an intern at Peiker Acustic for six months with the aid of a Leonard
 
 on this same year I was awarded with a __La Caixa and the German Academic Exchange Service (DAAD) scholarship__ for research towards the Ph.D. degree at the EMSP department of the Technische Universität Berlin. I started working with Dorothea Kolossa on the topic of uncertainty propagation.
 
-### 2005
+### 2005 Industrial Engineer, Electronics and Automatics 
 I got the Industrial Engineering degree with specialization in electronics and automatics at the Escuela Politecnica Superior de Ingenieria de Gijon (Spain). At the time, this was a 6 year multidisciplinary degree plus thesis. I got to learn a lot of math/phisics and all things engineering from industrial heat and cold to macro-economy, got also to play with all levels of programming languages from VHDL and x86 CISC to Visual C++ and MFCs (no Python sadly). On my free time, I started learning fuzzy logic and programmed my first neural network.
 
 I did my last year at Technische Universität Berlin with the aid of an Erasmus grant (2004). My final thesis was also at TU-Berlin, at the Electronics and Medical Signal Processing (EMSP) department (2005). My thesis was directed by Dorothea Kolossa and the topic was prunning in tied-mixture Hidden Markov Models for Automatic Speech Recognition.
