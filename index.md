@@ -8,6 +8,11 @@ Ramón Fernandez Astudillo
 
 I am currently Principal Research Staff Member at IBM Research AI in the [T. J. Watson research center in Yorktown Heights](https://www.research.ibm.com/labs/watson/visitor.shtml), New York. Before this I  was senior Research Scientist at [Unbabel](http://www.unbabel.com/) and associate researcher at [INESC-ID](https://www.l2f.inesc-id.pt/w/Welcome_to_the_Spoken_Language_Systems_Lab) in Lisboa and before that PhD candidate at [TU Berlin](https://www.emsp.tu-berlin.de/menue/startseite/). I got here starting from signal processing, then speech recognition and then natural language processing. While at it, deep learning happened. I ended up spending very large chunks of my life in Spain, Germany and Portugal and now in the Unites States. It is hard to find things that do not interest me, but artificial and crowd intelligence seem particularly motivating in this moment in history. 
 
+
+### 2024 Principal Research Scientist and Manager
+
+- Talked at Cornell Tech about the BRAIn estimator from the perspective of Optimal Policy Distillation \[[slides](https://www.dropbox.com/scl/fi/rgw3b1u459106yj5hxzv8/brain_cornelltech_2024.pdf?rlkey=7yc55jl9v6txmb9txph0kp2m4&st=zydgtav3&dl=0)\]
+
 ### 2022 Principal Research Scientist
 
 ### 2021
