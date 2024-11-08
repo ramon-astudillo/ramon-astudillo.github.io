@@ -6,6 +6,15 @@ Ramón Fernandez Astudillo
 \[[LinkedIn](https://www.linkedin.com/in/ramonastudillo/)\]
 \[[Twitter](https://twitter.com/RamonAstudill12),[BlueSky](https://bsky.app/profile/ramon-astudillo.bsky.social)\]
 
+<header>
+  <nav>
+    <ul>
+      <li><a href="index.html">Home</a></li>
+      <li><a href="talks.html">Talks</a></li>
+    </ul>
+  </nav>
+</header>
+
 I am currently Principal Research Scientist and manager at IBM Research AI in the [T. J. Watson research center in Yorktown Heights](https://www.research.ibm.com/labs/watson/visitor.shtml), New York. Before this I  was senior Research Scientist at [Unbabel](http://www.unbabel.com/) and associate researcher at [INESC-ID](https://www.l2f.inesc-id.pt/w/Welcome_to_the_Spoken_Language_Systems_Lab) in Lisboa and before that PhD candidate at [TU Berlin](https://www.emsp.tu-berlin.de/menue/startseite/). I got here starting from signal processing,then machine learning applied to speech and after that machine learning applied to natural and formal languages. While at it, deep learning happened. I ended up spending very large chunks of my life in Spain, Germany and Portugal and now in the Unites States. It is hard to find things that do not interest me, but artificial and crowd intelligence seem particularly motivating in this moment in history. 
 
 
