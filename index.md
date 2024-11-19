@@ -1,7 +1,7 @@
 Ramón Fernandez Astudillo
 =========================
 
-\[[Google Scholar](https://scholar.google.pt/citations?user=zJ4uM00AAAAJ&hl=en)\] 
+\[[Google Scholar](https://scholar.google.pt/citations?hl=en&user=zJ4uM00AAAAJ&view_op=list_works&sortby=pubdate)\] 
 \[[GitHub](https://github.com/ramon-astudillo)\]
 \[[LinkedIn](https://www.linkedin.com/in/ramonastudillo/)\]
 \[[Twitter](https://twitter.com/RamonAstudill12), [BlueSky](https://bsky.app/profile/ramon-astudillo.bsky.social)\]\[[Talks](pages/talks.md)\]
