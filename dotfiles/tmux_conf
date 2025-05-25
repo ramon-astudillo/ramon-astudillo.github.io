@@ -1,0 +1,13 @@
+set -g default-terminal "screen-256color"
+# colors
+set -g status-bg cyan
+set -g status-fg black
+# prefix key
+set -g prefix C-a
+unbind-key C-b
+bind-key C-a send-prefix
+# vim mode
+setw -g mode-keys vi
+# prevent tabs to be renamed
+set-window-option -g automatic-rename off
+set-option -g allow-rename off
