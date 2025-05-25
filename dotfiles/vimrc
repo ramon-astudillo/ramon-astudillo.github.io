@@ -1,0 +1,38 @@
+"basic visuals
+set number
+syntax on
+set autoindent
+set expandtab
+set tabstop=4
+"highlight searched words, undo with :noh
+set hlsearch
+set nowrap
+"vertical bar at 120 chars
+set colorcolumn=120
+
+"colorschemes
+" this needs vim9
+"colorscheme habamax
+colorscheme desert
+" sane diff colors
+if &diff
+    " From http://stackoverflow.com/questions/2019281/load-different-colorscheme-when-using-vimdiff
+    " Put in .vim/colors/sanediff.vim
+	colorscheme sanediff
+endif
+
+"Snippets
+" gf on vertical split
+map gv :vertical wincmd f<CR>"
+map ,p ofrom pdb import set_trace; set_trace() # noqa<ESC>
+"Todo maps
+" todo, done, canceled
+map ,t I- [ ] <ESC>
+map ,x :s@\[ \]@[x]@<ESC>
+map ,c :s@\[ \]@x@<ESC>
+map ,d :read !date "+\%Y-\%m-\%d"<ESC>
+map ,s :read !date "+\%H:\%M"<ESC>
+" run README
+map ,r :exec '!'.getline('.')<ESC>
+map ,o :exec "!open ".getline('.')<ESC>
+vnoremap ,m :w !tmux send -t :0.1 "$(cat -)" Enter<CR>
