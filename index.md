@@ -12,6 +12,8 @@ I am currently Principal Research Scientist, sub-theme lead and manager at IBM R
 
 - GMA releases [granite-3.3-8b-lora-math-prm](https://huggingface.co/ibm-granite/granite-3.3-8b-lora-math-prm) a Process Reward Model adaptor as part of its runtime strategy (upcoming). Some results [here](https://arxiv.org/abs/2505.17242), but its too early to talk about this
 
+- [The Future of Open Human Feedback](https://www.nature.com/articles/s42256-025-01038-2.epdf?sharing_token=rP431s8_kuEGtGCF0U4yl9RgN0jAjWel9jnR3ZoTv0NCCZCbfK5rXWkzEvWdcLIdfs0c0os8lY0bUeuKcHYLZHk1yQSwi-vYocKPGMokI9Ml5PGXVXYB2zS6Hf_vZvMZ2LlRy-v0-Hf2WgTWdPt3ryUKLe59R4wbJU-CJUnXSTw%3D) led by Shachar Don-Yehiha and Leshem Choshen got published in Nature Machine Intelligence. Great collaboration with many partners including HuggingFace, Cohere, Cornell, CMU, Oxford, Princeton, MIT and others.
+
 - IBM Releases [Granite-3.3](https://huggingface.co/ibm-granite/granite-3.3-8b-instruct) with great gains in mathematical reasoning. GMA does inference scaling "cold-start" and part of the Reinforcement Learning work.
 
 ### 2024 Principal Research Scientist, Theme Lead and Manager
