@@ -9,11 +9,36 @@ Ramón Fernandez Astudillo
 I am currently Principal Research Scientist and manager at IBM Research AI in the [T. J. Watson research center in Yorktown Heights](https://www.research.ibm.com/labs/watson/visitor.shtml), New York. Before this I  was senior Research Scientist at [Unbabel](http://www.unbabel.com/) and associate researcher at [INESC-ID](https://www.l2f.inesc-id.pt/w/Welcome_to_the_Spoken_Language_Systems_Lab) in Lisboa and before that PhD candidate at [TU Berlin](https://www.emsp.tu-berlin.de/menue/startseite/). I got here starting from signal processing,then machine learning applied to speech and after that machine learning applied to natural and formal languages. While at it, deep learning happened. I ended up spending very large chunks of my life in Spain, Germany and Portugal and now in the Unites States. It is hard to find things that do not interest me, but artificial and crowd intelligence seem particularly motivating in this moment in history. 
 
 
-### 2024 Principal Research Scientist and Manager
+### 2025
+
+
+### 2024 Principal Research Scientist, Theme Lead and Manager
+
+- Became sub-theme lead and manager. GMA is now divided into two research challenges: Data Synthesis and Reinforcement Learning. Focus is now on inference-training, both at post-training and runtime.
 
 - Talked at Cornell Tech about the BRAIn estimator from the perspective of Optimal Policy Distillation \[[slides](https://www.dropbox.com/scl/fi/rgw3b1u459106yj5hxzv8/brain_cornelltech_2024.pdf?rlkey=7yc55jl9v6txmb9txph0kp2m4&st=zydgtav3&dl=0)\]
 
+- IBM Releases [Granite-3.0](https://www.rivista.ai/wp-content/uploads/2024/10/paper-1.pdf) and GMA does the Reinforcement Learning (using BRAIn) and part of the synthetic data.
+
+- Gaurav Pandey's [BRAIn](https://proceedings.mlr.press/v235/pandey24a.html) introduces a generalization of DPO arising from Distributional Policy Gradient with great properties, accepted at ICML 2024
+
+### 2023
+
+- Lots of progress, interesting research and tech transfer, sadly mostly behind closed doors. We released `v0.1.0` of _The Simulator_.
+
+- Started the Generative Model Alignment (GMA) research challenge co-lead with Asim Munawar. The topic is given by its ambiguous constituency parse (Generative) (Model Alignment) i.e. (Structured) Synthetic Data Generation meets (Generative Model) (Alignment) i.e. Reinforcement Learning
+
+- Our neural-parser got transferred to [WatsonNLP](https://www.ibm.com/products/natural-language-processing). We also __released as OSS__ the last version [https://github.com/IBM/transition-amr-parser/tree/v0.5.4](https://github.com/IBM/transition-amr-parser/tree/v0.5.4), including some stuff that will never be published (turns out sub-graph isomorphism for AMR-constrained decoding is tractable! we include an aligner here)
+
 ### 2022 Principal Research Scientist
+
+- Closed 4 years of parsing and neuro-symbolic approaches for LLMs. We achieved the team's objectives of leading semantic parsing (AMR) by achieving and maintaining SoTA, creating and open sourcing the leading AMR parser and doing a ton of research. Particularly proud of the work introducing structured-heads into neural parsers and LLMs (Stack-Transformer, APT, StructBART) and our collaborations with the bigger Neuro-Symbolic theme, MIT and UMass.
+
+- Became Principal Research Scientist after 3y at IBM and I feel very proud :)
+
+- Andrew Drozdov's work on [joint neural alignment and parsing](https://aclanthology.org/2022.naacl-main.80/) shows how one can propagate aligner uncertainty to neural parser training, at NAACL 2022. Joint research work with UMass and MIT
+
+- We __release as OSS__ the neural parser above as version `v0.5.2` of [https://github.com/IBM/transition-amr-parser](https://github.com/IBM/transition-amr-parser/tree/v0.5.2)
 
 ### 2021
 
