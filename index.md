@@ -36,7 +36,7 @@ I am currently Principal Research Scientist, sub-theme lead and manager at IBM R
 
 - Our neural-parser got transferred to [WatsonNLP](https://www.ibm.com/products/natural-language-processing). We also __released as OSS__ the last version [https://github.com/IBM/transition-amr-parser/tree/v0.5.4](https://github.com/IBM/transition-amr-parser/tree/v0.5.4), including some stuff that will never be published (turns out sub-graph isomorphism for AMR-constrained decoding is tractable! we include an aligner here)
 
-### 2022 Principal Research Scientist
+### 2022 Principal Research Scientist and Team Lead
 
 - Closed 4 years of parsing and neuro-symbolic approaches for LLMs. We achieved the team's objectives of leading semantic parsing (AMR) by achieving and maintaining SoTA, creating and open sourcing the leading AMR parser and doing a ton of research. Particularly proud of the work introducing structured-heads into neural parsers and LLMs (Stack-Transformer, APT, StructBART) and our collaborations with the bigger Neuro-Symbolic theme, MIT and UMass.
 
@@ -66,7 +66,7 @@ I am currently Principal Research Scientist, sub-theme lead and manager at IBM R
 
 - Thrilled to start a __collaboration with MIT's Professor Roger Levi__ from the Department of Brain and Cognitive Sciences on is Neuro-Symbolic methods (MIT-IBM program).
 
-### 2019 Research Staff Member
+### 2019 Research Staff Member and Team Lead
 
 - Murali Karthik's paper __shortlisted for best student paper__ at Interspeech 2019!. JSALT2018 follow-up applying cycle-consistency to fine-tune end-to-end ASR with unpaired speech and text \[[preprint](https://arxiv.org/abs/1905.01152)\]
 
@@ -90,7 +90,7 @@ I am currently Principal Research Scientist, sub-theme lead and manager at IBM R
 
 - __Co-organized__ the Automatic Post-Editing and Quality Estimation workshop at AMTA 2018 \[[slides](https://www.aclweb.org/anthology/W18-2100)\]
 
-### 2016 Senior Research Scientist
+### 2016 Senior Research Scientist and Team Lead
 
 - INESC-ID/L2F got the __winning system__ for Compare 2016 Native Language Identification task \[[paper](https://pdfs.semanticscholar.org/06ed/d212e9ab4225e1cde5ecd5c395792195178f.pdf)\]
 
