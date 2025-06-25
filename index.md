@@ -6,21 +6,25 @@ Ramón Fernandez Astudillo
 \[[LinkedIn](https://www.linkedin.com/in/ramonastudillo/)\]
 \[[Twitter](https://twitter.com/RamonAstudill12), [BlueSky](https://bsky.app/profile/ramon-astudillo.bsky.social)\]\[[Talks](pages/talks.md)\]
 
-I am currently Principal Research Scientist and manager at IBM Research AI in the [T. J. Watson research center in Yorktown Heights](https://www.research.ibm.com/labs/watson/visitor.shtml), New York. Before this I  was senior Research Scientist at [Unbabel](http://www.unbabel.com/) and associate researcher at [INESC-ID](https://www.l2f.inesc-id.pt/w/Welcome_to_the_Spoken_Language_Systems_Lab) in Lisboa and before that PhD candidate at [TU Berlin](https://www.emsp.tu-berlin.de/menue/startseite/). I got here starting from signal processing,then machine learning applied to speech and after that machine learning applied to natural and formal languages. While at it, deep learning happened. I ended up spending very large chunks of my life in Spain, Germany and Portugal and now in the Unites States. It is hard to find things that do not interest me, but artificial and crowd intelligence seem particularly motivating in this moment in history. 
-
+I am currently Principal Research Scientist, sub-theme lead and manager at IBM Research AI in the [T. J. Watson research center in Yorktown Heights](https://www.research.ibm.com/labs/watson/visitor.shtml), New York. Before this I  was senior Research Scientist at [Unbabel](http://www.unbabel.com/) (YC 2014) and associate researcher at [INESC-ID](https://www.l2f.inesc-id.pt/w/Welcome_to_the_Spoken_Language_Systems_Lab) in Lisboa and before that PhD candidate at [TU Berlin](https://www.emsp.tu-berlin.de/menue/startseite/). I got here starting from signal processing, then machine learning applied to speech and, after that, machine learning applied to natural and formal languages. While at it, deep learning happened. I ended up spending very large chunks of my life in Spain, Germany and Portugal and now in the Unites States. It is hard to find things that do not interest me, but artificial and crowd intelligence seem particularly motivating in this moment in history. 
 
 ### 2025
 
+- GMA releases [granite-3.3-8b-lora-math-prm](https://huggingface.co/ibm-granite/granite-3.3-8b-lora-math-prm) a Process Reward Model adaptor as part of its runtime strategy (upcoming). Some results [here](https://arxiv.org/abs/2505.17242), but its too early to talk about this
+
+- IBM Releases [Granite-3.3](https://huggingface.co/ibm-granite/granite-3.3-8b-instruct) with great gains in mathematical reasoning. GMA does inference scaling "cold-start" and part of the Reinforcement Learning work.
 
 ### 2024 Principal Research Scientist, Theme Lead and Manager
 
-- Became sub-theme lead and manager. GMA is now divided into two research challenges: Data Synthesis and Reinforcement Learning. Focus is now on inference-training, both at post-training and runtime.
+- Became sub-theme lead and manager. GMA is now divided into two research challenges: Data Synthesis and Reinforcement Learning. Focus is now on inference-scaling, both at post-training and runtime.
 
 - Talked at Cornell Tech about the BRAIn estimator from the perspective of Optimal Policy Distillation \[[slides](https://www.dropbox.com/scl/fi/rgw3b1u459106yj5hxzv8/brain_cornelltech_2024.pdf?rlkey=7yc55jl9v6txmb9txph0kp2m4&st=zydgtav3&dl=0)\]
 
 - IBM Releases [Granite-3.0](https://www.rivista.ai/wp-content/uploads/2024/10/paper-1.pdf) and GMA does the Reinforcement Learning (using BRAIn) and part of the synthetic data.
 
 - Gaurav Pandey's [BRAIn](https://proceedings.mlr.press/v235/pandey24a.html) introduces a generalization of DPO arising from Distributional Policy Gradient with great properties, accepted at ICML 2024
+
+- We released `v0.3.0` of _The Simulator_.
 
 ### 2023
 
