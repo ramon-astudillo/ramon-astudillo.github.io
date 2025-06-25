@@ -16,7 +16,7 @@ I am currently Principal Research Scientist, sub-theme lead and manager at IBM R
 
 - IBM Releases [Granite-3.3](https://huggingface.co/ibm-granite/granite-3.3-8b-instruct) with great gains in mathematical reasoning. GMA does inference scaling "cold-start" and part of the Reinforcement Learning work.
 
-### 2024 Principal Research Scientist, Theme Lead and Manager
+### 2024 Principal Research Scientist, Sub-Theme Lead and Manager
 
 - Became sub-theme lead and manager. GMA is now divided into two research challenges: Data Synthesis and Reinforcement Learning. Focus is now on inference-scaling, both at post-training and runtime.
 
