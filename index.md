@@ -1,6 +1,3 @@
-Ramón Fernandez Astudillo
-=========================
-
 \[[Google Scholar](https://scholar.google.pt/citations?hl=en&user=zJ4uM00AAAAJ&view_op=list_works&sortby=pubdate)\] 
 \[[GitHub](https://github.com/ramon-astudillo)\]
 \[[LinkedIn](https://www.linkedin.com/in/ramonastudillo/)\]
