@@ -77,9 +77,18 @@
         color: var(--twilight-blue) !important;
       }
       
-      /* Justify text */
-      .main-content {
-        text-align: justify;
+      /* Justify text - only on desktop */
+      @media (min-width: 768px) {
+        .main-content {
+          text-align: justify;
+        }
+      }
+      
+      /* Left align text on mobile */
+      @media (max-width: 767px) {
+        .main-content {
+          text-align: left;
+        }
       }
       
       /* Photo credit styling */
