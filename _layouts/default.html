@@ -74,6 +74,16 @@
         background-repeat: no-repeat;
         will-change: transform;
         z-index: 0;
+        image-rendering: -webkit-optimize-contrast;
+        image-rendering: crisp-edges;
+        image-rendering: optimize-contrast;
+      }
+      
+      @media (min-width: 1200px) {
+        .parallax-bg {
+          background-size: 100% auto;
+          background-position: center bottom;
+        }
       }
     </style>
   </head>
