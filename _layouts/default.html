@@ -82,6 +82,17 @@
         text-align: justify;
       }
       
+      /* Photo credit styling */
+      .main-content .photo-credit {
+        font-size: 0.8em !important;
+        color: #333 !important;
+        text-align: left !important;
+        margin: -30px 0 20px 0 !important;
+        padding: 0 !important;
+        font-style: italic !important;
+        line-height: 1 !important;
+      }
+      
       /* Keep header titles white for readability over image */
       .page-header .project-name,
       .page-header .project-tagline {
@@ -132,6 +143,7 @@
     </header>
 
     <main id="content" class="main-content" role="main">
+      <div class="photo-credit">Photo by Doug McClure</div>
       {{ content }}
 
       <footer class="site-footer">
