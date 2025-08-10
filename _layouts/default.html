@@ -91,15 +91,22 @@
         }
       }
       
-      /* Photo credit styling */
-      .main-content .photo-credit {
+      /* Photo credit styling - inside header */
+      .page-header .photo-credit {
+        position: absolute;
+        bottom: 10px;
+        right: 0;
+        left: 0;
         font-size: 0.8em !important;
-        color: #333 !important;
-        text-align: left !important;
-        margin: -30px 0 20px 0 !important;
-        padding: 0 !important;
+        color: white !important;
+        text-align: right !important;
         font-style: italic !important;
         line-height: 1 !important;
+        z-index: 3;
+        max-width: 64rem;
+        margin: 0 auto;
+        padding: 0 2rem;
+        box-sizing: border-box;
       }
       
       /* Keep header titles white for readability over image */
@@ -149,10 +156,10 @@
         <a href="{{ site.github.zip_url }}" class="btn">Download .zip</a>
         <a href="{{ site.github.tar_url }}" class="btn">Download .tar.gz</a>
       {% endif %}
+      <div class="photo-credit">Photo by Doug McClure</div>
     </header>
 
     <main id="content" class="main-content" role="main">
-      <div class="photo-credit">Photo by Doug McClure</div>
       {{ content }}
 
       <footer class="site-footer">
