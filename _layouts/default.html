@@ -40,6 +40,16 @@
         z-index: 2;
       }
       
+      /* Color palette from your aurora image */
+      :root {
+        --aurora-pink: #c084a8;        /* Soft aurora pink */
+        --aurora-purple: #8a5a9e;      /* Deep aurora purple */
+        --aurora-magenta: #b866a3;     /* Bright aurora magenta */
+        --night-blue: #2c4d7a;         /* Deep night sky blue */
+        --twilight-blue: #4a6b9e;      /* Lighter twilight blue */
+        --dark-purple: #4d3a5e;        /* Dark purple from sky */
+      }
+      
       /* Override title colors - only for content area, not header */
       .main-content h1, 
       .main-content h2, 
@@ -47,8 +57,24 @@
       .main-content h4, 
       .main-content h5, 
       .main-content h6 {
-        color: #333 !important;
+        color: var(--night-blue) !important;  /* Change this variable to test colors */
         font-weight: bold !important;
+      }
+      
+      /* Optional: Different colors for different heading levels
+      .main-content h1 { color: var(--aurora-magenta) !important; }
+      .main-content h2 { color: var(--aurora-purple) !important; }
+      .main-content h3 { color: var(--night-blue) !important; }
+      .main-content h4 { color: var(--twilight-blue) !important; }
+      */
+      
+      /* Links styling with night blue */
+      .main-content a {
+        color: var(--night-blue) !important;
+      }
+      
+      .main-content a:hover {
+        color: var(--twilight-blue) !important;
       }
       
       /* Keep header titles white for readability over image */
