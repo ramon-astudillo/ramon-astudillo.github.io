@@ -29,7 +29,7 @@ I am currently **Principal Research Scientist**, **sub-theme lead for Generative
 
 - Lots of progress, interesting research and tech transfer, sadly mostly behind closed doors. We **internally released** `v0.1.0` of _The Simulator_.
 
-- **Started** the Generative Model Alignment (GMA) research challenge co-lead with Asim Munawar. The topic is given by its ambiguous constituency parse (Generative) (Model Alignment) i.e. (Structured) Synthetic Data Generation meets (Generative Model) (Alignment) i.e. Reinforcement Learning
+- **Started** the Generative Model Alignment (GMA) research challenge co-led with Asim Munawar. The topic is given by its ambiguous constituency parse (Generative) (Model Alignment) i.e. (Structured) Synthetic Data Generation meets (Generative Model) (Alignment) i.e. Reinforcement Learning
 
 - Our neural-parser got transferred to [WatsonNLP](https://www.ibm.com/products/natural-language-processing). We also __released as OSS__ the last version [https://github.com/IBM/transition-amr-parser/tree/v0.5.4](https://github.com/IBM/transition-amr-parser/tree/v0.5.4), including some stuff that will never be published (turns out sub-graph isomorphism for AMR-constrained decoding is tractable! we include an aligner here)
 
@@ -146,7 +146,7 @@ This was a relatively active topic in robust ASR at the time, with multiple comp
 
 Aside from my PhD, in my time in Berlin I also got to tutor the Neural Networks Seminar of EMSP, supervised Phillip Mandelartz's Thesis and helped other students in the department with their projects and theses.
 
-After defending my thesis I still spent some months at EMSP finishing papers. While finishing, a causality led me to discover Isabel Trancoso's department at INESC-ID in Lisbon. After reading João Graças and Diamantino Caseiros papers, I decided to apply for a post-doctoral grant to transition from speech to natural language processing. Luckily, I was awarded with a 3+3 year FCT Post-Doctoral grant to join INESC-ID/L2F. 
+After defending my thesis I still spent some months at EMSP finishing papers. While finishing, a casuality led me to discover Isabel Trancoso's department at INESC-ID in Lisbon. After reading João Graças and Diamantino Caseiros papers, I decided to apply for a post-doctoral grant to transition from speech to natural language processing. Luckily, I was awarded with a 3+3 year FCT Post-Doctoral grant to join INESC-ID/L2F. 
 
 ### 2006
 I worked as an intern at Peiker Acustic for six months with the aid of a Leonardo grant and in collaboration with the TU-Berlin. The output was a spectral codebook-based speech reconstruction algorithm. Aside from realising how hard is to write a tech report in German, I also got to know better the Minimum Mean Spectral Amplitude and Log Spectral Amplitude Estimators (also known and Ephraim-Malah filters). 
