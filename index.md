@@ -35,7 +35,7 @@ I am currently **Principal Research Scientist**, **sub-theme lead for Generative
 
 ### 2022 Principal Research Scientist and Team Lead
 
-- **Closed 4 years** of parsing and neuro-symbolic approaches for LLMs. We achieved the team's objectives of leading semantic parsing (AMR) by achieving and maintaining SoTA, creating and open sourcing the leading AMR parser and doing a ton of research. Particularly proud of the work introducing structured-heads into neural parsers and LLMs (Stack-Transformer, APT, StructBART) and our collaborations with the bigger Neuro-Symbolic theme, MIT and UMass.
+- **Closed 3 years** of parsing and neuro-symbolic approaches for LLMs. We achieved the team's objectives of leading semantic parsing (AMR) by achieving and maintaining SoTA, creating and open sourcing the leading AMR parser and doing a ton of research. Particularly proud of the work introducing structured-heads into neural parsers and LLMs (Stack-Transformer, APT, StructBART) and our collaborations with the bigger Neuro-Symbolic theme, MIT and UMass.
 
 - **Became** Principal Research Scientist after 3y at IBM and I feel very proud :)
 
