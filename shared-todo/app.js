@@ -67,8 +67,11 @@ function render() {
   el("emptyState").hidden = sorted.length !== 0;
 }
 
+// updated_at is null here (not a fresh timestamp) so repeated calls before
+// the file exists on Dropbox compare equal — otherwise every read-check-write
+// on a still-nonexistent file looks like a remote conflict.
 function emptyTodoDoc() {
-  return { version: 1, updated_at: new Date().toISOString(), todos: [] };
+  return { version: 1, updated_at: null, todos: [] };
 }
 
 // Downloads + decrypts the current remote file (or a fresh empty doc if none exists yet).
