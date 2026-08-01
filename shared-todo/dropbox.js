@@ -59,6 +59,14 @@ const DropboxAuth = (() => {
     const code = url.searchParams.get("code");
     if (!code) return false;
 
+    // Strip ?code=...&state=... from the address bar immediately, before
+    // attempting the exchange — an auth code is single-use, so it must
+    // never be left sitting in history/URL to be replayed (and fail) on
+    // a later reload.
+    url.searchParams.delete("code");
+    url.searchParams.delete("state");
+    window.history.replaceState({}, "", url.pathname + url.search);
+
     const verifier = sessionStorage.getItem(SS_CODE_VERIFIER);
     sessionStorage.removeItem(SS_CODE_VERIFIER);
 
@@ -82,11 +90,6 @@ const DropboxAuth = (() => {
     localStorage.setItem(LS_REFRESH_TOKEN, data.refresh_token);
     accessToken = data.access_token;
     accessTokenExpiresAt = Date.now() + data.expires_in * 1000;
-
-    // Strip ?code=...&state=... from the address bar.
-    url.searchParams.delete("code");
-    url.searchParams.delete("state");
-    window.history.replaceState({}, "", url.pathname + url.search);
     return true;
   }
 
