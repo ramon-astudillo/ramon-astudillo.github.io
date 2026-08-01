@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Shared Todos</title>
+<meta name="theme-color" content="#2f6feb">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root {
+    --bg: #f4f5f7;
+    --card: #ffffff;
+    --text: #1c1e21;
+    --muted: #6b7280;
+    --accent: #2f6feb;
+    --accent-dark: #1f4fb0;
+    --danger: #d64545;
+    --border: #e3e5e8;
+    --done: #9aa0a6;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  #app { max-width: 560px; margin: 0 auto; min-height: 100%; display: flex; flex-direction: column; }
+
+  header {
+    padding: 16px 16px 10px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  header h1 { font-size: 1.25rem; margin: 0; }
+  .sync-line { font-size: 0.75rem; color: var(--muted); padding: 0 16px 8px; display: flex; justify-content: space-between; align-items: center; }
+  .icon-btn {
+    background: none; border: none; font-size: 1.3rem; padding: 8px; line-height: 1;
+    color: var(--muted); cursor: pointer;
+  }
+
+  main { flex: 1; padding: 0 12px 100px; }
+
+  .center-screen {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 24px; text-align: center; gap: 16px;
+  }
+  .center-screen p { color: var(--muted); font-size: 0.95rem; max-width: 380px; }
+  .warn-box {
+    background: #fff7e6; border: 1px solid #f0c36d; color: #7a5b00;
+    border-radius: 10px; padding: 12px 14px; font-size: 0.85rem; max-width: 380px; text-align: left;
+  }
+
+  button.primary {
+    background: var(--accent); color: white; border: none; border-radius: 10px;
+    padding: 14px 22px; font-size: 1rem; font-weight: 600; cursor: pointer; min-height: 48px;
+  }
+  button.primary:active { background: var(--accent-dark); }
+  button.primary:disabled { opacity: 0.5; }
+
+  input[type=password], input[type=text] {
+    width: 100%; padding: 14px; font-size: 1rem; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--card); color: var(--text);
+  }
+
+  .todo-list { list-style: none; margin: 8px 0; padding: 0; }
+  .todo-item {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--card); border-radius: 12px; padding: 12px 14px; margin-bottom: 8px;
+    border: 1px solid var(--border);
+  }
+  .todo-check {
+    width: 26px; height: 26px; min-width: 26px; border-radius: 50%;
+    border: 2px solid var(--accent); background: none; cursor: pointer; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .todo-check.done { background: var(--accent); }
+  .todo-check svg { width: 15px; height: 15px; stroke: white; fill: none; visibility: hidden; }
+  .todo-check.done svg { visibility: visible; }
+  .todo-text { flex: 1; font-size: 1rem; word-break: break-word; }
+  .todo-text.done { text-decoration: line-through; color: var(--done); }
+  .todo-del {
+    background: none; border: none; color: var(--muted); font-size: 1.3rem;
+    padding: 6px 8px; cursor: pointer; min-width: 40px;
+  }
+  .todo-del:active { color: var(--danger); }
+  .empty-state { color: var(--muted); text-align: center; padding: 40px 16px; font-size: 0.95rem; }
+
+  .add-bar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--card); border-top: 1px solid var(--border);
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+    display: flex; gap: 8px; justify-content: center;
+  }
+  .add-bar form { display: flex; gap: 8px; width: 100%; max-width: 560px; }
+  .add-bar input { flex: 1; }
+  .add-bar button {
+    background: var(--accent); color: white; border: none; border-radius: 10px;
+    width: 48px; font-size: 1.4rem; cursor: pointer;
+  }
+
+  .toast {
+    position: fixed; bottom: 76px; left: 50%; transform: translateX(-50%);
+    background: #222; color: white; padding: 10px 18px; border-radius: 20px;
+    font-size: 0.85rem; opacity: 0; pointer-events: none; transition: opacity 0.2s;
+    max-width: 90%; text-align: center; z-index: 50;
+  }
+  .toast.show { opacity: 0.95; }
+
+  .settings-panel {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: none;
+    align-items: flex-end; justify-content: center; z-index: 100;
+  }
+  .settings-panel.open { display: flex; }
+  .settings-sheet {
+    background: var(--card); width: 100%; max-width: 560px; border-radius: 16px 16px 0 0;
+    padding: 20px; padding-bottom: calc(20px + env(safe-area-inset-bottom));
+  }
+  .settings-sheet h2 { margin: 0 0 12px; font-size: 1.05rem; }
+  .settings-sheet .row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 0.9rem;
+  }
+  .settings-sheet .row:last-of-type { border-bottom: none; }
+  .settings-sheet button.secondary {
+    background: none; border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 14px; font-size: 0.85rem; cursor: pointer; color: var(--text);
+  }
+  .settings-sheet button.danger { color: var(--danger); border-color: var(--danger); }
+  .settings-sheet .close-row { text-align: center; margin-top: 8px; }
+  .settings-sheet .close-row button { background: none; border: none; color: var(--accent); font-size: 0.95rem; padding: 10px; }
+
+  .spinner {
+    width: 18px; height: 18px; border: 2px solid var(--border); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin 0.7s linear infinite; display: inline-block;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header>
+    <h1>Shared Todos</h1>
+    <button class="icon-btn" id="settingsBtn" title="Settings" hidden>&#9881;</button>
+  </header>
+  <div class="sync-line" id="syncLine" hidden>
+    <span id="syncStatus">Not synced yet</span>
+    <button class="icon-btn" id="refreshBtn" title="Refresh">&#8635;</button>
+  </div>
+
+  <main id="main">
+    <div class="center-screen" id="screen-connect">
+      <p>This list is stored encrypted in your Dropbox. Connect your Dropbox account to get started.</p>
+      <button class="primary" id="connectBtn">Connect Dropbox</button>
+    </div>
+
+    <div class="center-screen" id="screen-passphrase" hidden>
+      <p id="passphrasePrompt">Enter the shared passphrase to unlock your todo list.</p>
+      <div class="warn-box">There is no password recovery. If the passphrase is lost, the data cannot be decrypted. Write it down somewhere safe.</div>
+      <form id="passphraseForm" style="width:100%; max-width:320px; display:flex; flex-direction:column; gap:12px;">
+        <input type="password" id="passphraseInput" placeholder="Passphrase" autocomplete="current-password" required>
+        <label style="font-size:0.85rem; color:var(--muted); display:flex; align-items:center; gap:8px;">
+          <input type="checkbox" id="rememberKey" checked style="width:auto;"> Remember on this device
+        </label>
+        <button class="primary" type="submit">Unlock</button>
+        <span id="passphraseError" style="color:var(--danger); font-size:0.85rem;"></span>
+      </form>
+    </div>
+
+    <div class="center-screen" id="screen-loading">
+      <span class="spinner"></span>
+      <p id="loadingText">Loading...</p>
+    </div>
+
+    <ul class="todo-list" id="todoList" hidden></ul>
+    <div class="empty-state" id="emptyState" hidden>No todos yet. Add one below.</div>
+  </main>
+
+  <div class="add-bar" id="addBar" hidden>
+    <form id="addForm">
+      <input type="text" id="addInput" placeholder="Add a todo..." autocomplete="off">
+      <button type="submit">+</button>
+    </form>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <div class="settings-panel" id="settingsPanel">
+    <div class="settings-sheet">
+      <h2>Settings</h2>
+      <div class="row"><span>Dropbox account</span><button class="secondary danger" id="disconnectBtn">Disconnect</button></div>
+      <div class="row"><span>Remembered passphrase</span><button class="secondary" id="forgetKeyBtn">Forget on this device</button></div>
+      <div class="row"><span>Last synced</span><span id="settingsSyncTime">—</span></div>
+      <div class="close-row"><button id="closeSettingsBtn">Close</button></div>
+    </div>
+  </div>
+
+</div>
+
+<script src="config.js"></script>
+<script src="crypto.js"></script>
+<script src="dropbox.js"></script>
+<script src="app.js"></script>
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => navigator.serviceWorker.register("sw.js"));
+  }
+</script>
+</body>
+</html>
