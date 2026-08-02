@@ -65,9 +65,10 @@
   }
 
   .todo-list { list-style: none; margin: 8px 0; padding: 0; }
+  .todo-item-wrap { margin-bottom: 8px; }
   .todo-item {
     display: flex; align-items: center; gap: 12px;
-    background: var(--card); border-radius: 12px; padding: 12px 14px; margin-bottom: 8px;
+    background: var(--card); border-radius: 12px; padding: 12px 14px;
     border: 1px solid var(--border);
   }
   .todo-check {
@@ -85,6 +86,24 @@
     padding: 6px 8px; cursor: pointer; min-width: 40px;
   }
   .todo-del:active { color: var(--danger); }
+  .todo-fold {
+    background: none; border: none; color: var(--muted); font-size: 0.8rem;
+    padding: 4px 6px; cursor: pointer; white-space: nowrap;
+  }
+  .todo-addsub {
+    background: none; border: none; color: var(--muted); font-size: 1.1rem;
+    padding: 4px 6px; cursor: pointer; min-width: 30px;
+  }
+  .sub-list {
+    list-style: none; margin: 4px 0 0 30px; padding: 2px 0 2px 12px;
+    border-left: 2px solid var(--border);
+  }
+  .sub-item { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+  .sub-check { width: 20px; height: 20px; min-width: 20px; }
+  .sub-check svg { width: 12px; height: 12px; }
+  .sub-add-row { padding: 6px 0; }
+  .sub-add-row form { display: flex; }
+  .sub-add-row input { padding: 8px 10px; font-size: 0.85rem; border-radius: 8px; }
   .empty-state { color: var(--muted); text-align: center; padding: 40px 16px; font-size: 0.95rem; }
 
   .add-bar {
@@ -134,6 +153,11 @@
   .spinner {
     width: 18px; height: 18px; border: 2px solid var(--border); border-top-color: var(--accent);
     border-radius: 50%; animation: spin 0.7s linear infinite; display: inline-block;
+  }
+  .spinner-sm {
+    width: 11px; height: 11px; border: 2px solid var(--border); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin 0.7s linear infinite; display: inline-block;
+    vertical-align: -1px; margin-right: 4px;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 </style>
