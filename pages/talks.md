@@ -5,6 +5,8 @@ Talks
 
 In 2024 I __Talked__ at Cornell Tech about the BRAIn estimator from the perspective of Optimal Policy Distillation \[[slides](https://www.dropbox.com/scl/fi/rgw3b1u459106yj5hxzv8/brain_cornelltech_2024.pdf?rlkey=7yc55jl9v6txmb9txph0kp2m4&st=zydgtav3&dl=0)\]
 
+In 2019 I __Talked__ at MIT's Department of Brain and Cognitive Sciences (Roger Levy's Computational Psycholinguistics Laboratory) about "We need Transformers, but do they need us?" \[[slides](https://www.dropbox.com/scl/fi/zhq0j57ww6u22rlaa00p8/we_need_transformers.pdf?rlkey=tnp5w1lyjjam7vu91y4sevmfg&st=4nzgpzbh&dl=0)\]
+
 In 2018 I __Talked__ at some company in Berlin about the current state of Quality Estimation for Machine Translation (some details about our WMT 2018 work) \[[slides](https://www.dropbox.com/s/js44ga3ulwbdsie/nqe.pdf?dl=0)\]
 
 In 2018 I __Talked__ at University of Heidelberg about the impact of deep learning in Spoken Language Translation (mostly about my separate knowledge of ASR and MT) \[[slides](https://www.dropbox.com/s/dira36wh9dmnill/nslt.pdf?dl=0)\]
