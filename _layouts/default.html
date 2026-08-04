@@ -79,17 +79,25 @@
         color: var(--twilight-blue) !important;
       }
       
-      /* Justify text - only on desktop */
+      /* Justify text - only on desktop, with hyphenation to avoid
+         the big word-gaps that justify produces on narrow columns */
       @media (min-width: 768px) {
         .main-content {
           text-align: justify;
+          text-justify: inter-word;
+          hyphens: auto;
+          -webkit-hyphens: auto;
+          -ms-hyphens: auto;
         }
       }
-      
+
       /* Left align text on mobile */
       @media (max-width: 767px) {
         .main-content {
           text-align: left;
+          hyphens: auto;
+          -webkit-hyphens: auto;
+          -ms-hyphens: auto;
         }
       }
       
