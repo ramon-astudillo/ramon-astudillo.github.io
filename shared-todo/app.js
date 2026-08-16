@@ -1,12 +1,42 @@
 // UI + sync orchestration. Wires together dropbox.js and crypto.js.
 
 const LS_KEY_CACHE = "shared_todo_key_cache";
+const LS_QUEUE_KEY = "shared_todo_pending_queue"; // persisted { todos, loadedUpdatedAt, pendingOps }
 
 let cryptoKey = null;   // CryptoKey, derived from the passphrase
 let todos = [];         // in-memory list, includes any not-yet-synced optimistic edits
 let loadedUpdatedAt = null; // updated_at of the version we last read from Dropbox
-let pendingMutates = []; // edits applied locally but not yet confirmed on Dropbox
+let pendingOps = []; // serializable edit ops applied locally but not yet confirmed on Dropbox (see applyOp)
 let syncChain = Promise.resolve(); // serializes background syncs so edits don't race
+
+// Mirrors `todos`/`loadedUpdatedAt`/`pendingOps` into localStorage on every
+// edit so an unsynced queue survives the JS process being killed — e.g.
+// Android reclaiming a backgrounded PWA tab while offline. Without this, a
+// killed-and-reopened app has no memory of pending edits and silently
+// overwrites them with a fresh remote fetch on the next load (see
+// loadAndRender), which looks like "my offline edits got wiped" even though
+// there was no real conflict.
+function persistQueue() {
+  try {
+    localStorage.setItem(LS_QUEUE_KEY, JSON.stringify({ todos, loadedUpdatedAt, pendingOps }));
+  } catch (err) {
+    console.error(err); // storage full/unavailable — queue just won't survive a reload, not fatal
+  }
+}
+
+function loadPersistedQueue() {
+  try {
+    const raw = localStorage.getItem(LS_QUEUE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (err) {
+    console.error(err);
+    return null;
+  }
+}
+
+function clearPersistedQueue() {
+  localStorage.removeItem(LS_QUEUE_KEY);
+}
 const editingIds = new Set(); // todo/sub-todo IDs whose rename/date edit panel is open (local UI state, not synced; ids are UUIDs so one Set covers both levels)
 const shownChildrenIds = new Set(); // top-level todo IDs whose sub-todo list + add-sub-todo form is shown (local UI state, not synced)
 
@@ -363,39 +393,162 @@ async function fetchRemoteDoc() {
   }
 }
 
-// Initial load on app open (spec section 6, step 1).
+// Applies a single serializable edit op to a todos list. `op` carries only
+// plain JSON data (ids, patches, pre-generated timestamps/uuids for new
+// items) so it can round-trip through persistQueue()/loadPersistedQueue() —
+// unlike a raw closure, which can't survive localStorage. Each op is applied
+// twice over its lifetime: once immediately to the local `todos` (optimistic
+// UI), and once later to a freshly-fetched remote copy at sync time (see
+// syncPending) — so relative changes like "toggle" re-flip rather than
+// storing an absolute target state.
+function applyOp(list, op) {
+  switch (op.type) {
+    case "add":
+      list.push(op.todo);
+      break;
+    case "toggle": {
+      const t = list.find((x) => x.id === op.id);
+      if (t) { t.done = !t.done; t.updated_at = op.now; }
+      break;
+    }
+    case "delete": {
+      const idx = list.findIndex((x) => x.id === op.id);
+      if (idx > -1) list.splice(idx, 1);
+      break;
+    }
+    case "edit": {
+      const t = list.find((x) => x.id === op.id);
+      if (!t) break;
+      t.text = op.patch.text;
+      if (op.patch.due_date) {
+        t.due_date = op.patch.due_date;
+        if (op.patch.due_time) t.due_time = op.patch.due_time; else delete t.due_time;
+      } else {
+        delete t.due_date;
+        delete t.due_time;
+      }
+      t.updated_at = op.now;
+      break;
+    }
+    case "addSub": {
+      const parent = list.find((x) => x.id === op.parentId);
+      if (!parent) break;
+      if (!parent.children) parent.children = [];
+      parent.children.push(op.todo);
+      parent.updated_at = op.now;
+      break;
+    }
+    case "toggleSub": {
+      const parent = list.find((x) => x.id === op.parentId);
+      const child = parent && parent.children && parent.children.find((c) => c.id === op.childId);
+      if (!child) break;
+      child.done = !child.done;
+      child.updated_at = op.now;
+      parent.updated_at = op.now;
+      break;
+    }
+    case "deleteSub": {
+      const parent = list.find((x) => x.id === op.parentId);
+      if (!parent || !parent.children) break;
+      const idx = parent.children.findIndex((c) => c.id === op.childId);
+      if (idx > -1) {
+        parent.children.splice(idx, 1);
+        parent.updated_at = op.now;
+      }
+      break;
+    }
+    case "editSub": {
+      const parent = list.find((x) => x.id === op.parentId);
+      const child = parent && parent.children && parent.children.find((c) => c.id === op.childId);
+      if (!child) break;
+      child.text = op.patch.text;
+      if (op.patch.due_date) {
+        child.due_date = op.patch.due_date;
+        if (op.patch.due_time) child.due_time = op.patch.due_time; else delete child.due_time;
+      } else {
+        delete child.due_date;
+        delete child.due_time;
+      }
+      child.updated_at = op.now;
+      parent.updated_at = op.now;
+      break;
+    }
+  }
+}
+
+// Initial load on app open (spec section 6, step 1). If a pending-edit queue
+// survived from a previous session (the JS process was killed — e.g. Android
+// backgrounding — while edits were still unsynced), restore it instead of
+// blindly overwriting with a fresh remote fetch, which would silently
+// discard those edits with no real conflict to justify it.
 async function loadAndRender() {
   showScreen("loading");
   el("loadingText").textContent = "Loading your list...";
   el("loadingRetryBtn").hidden = true;
-  const doc = await fetchRemoteDoc();
+
+  const cached = loadPersistedQueue();
+
+  let doc;
+  try {
+    doc = await fetchRemoteDoc(); // also validates the passphrase (throws isKeyError on a wrong key)
+  } catch (err) {
+    if (err.isKeyError || !cached || cached.pendingOps.length === 0) throw err;
+    // Offline (or Dropbox unreachable) but a previous session left unsynced
+    // edits behind — show them instead of getting stuck on a retry screen;
+    // the sync-status line will retry once connectivity comes back.
+    todos = cached.todos;
+    loadedUpdatedAt = cached.loadedUpdatedAt;
+    pendingOps = cached.pendingOps;
+    render();
+    updateSyncStatus(new Date());
+    showScreen("list");
+    setSyncState("error");
+    toast("Offline — showing your unsynced changes. Will retry syncing once you're back online.");
+    return;
+  }
+
+  if (cached && cached.pendingOps.length > 0) {
+    // Reached Dropbox fine, but there's also a leftover local queue — restore
+    // it on top of the (possibly newer) remote base and let syncPending do
+    // its normal conflict check/replay/push instead of discarding it.
+    todos = cached.todos;
+    loadedUpdatedAt = cached.loadedUpdatedAt;
+    pendingOps = cached.pendingOps;
+    render();
+    updateSyncStatus(new Date());
+    showScreen("list");
+    syncChain = syncChain.then(syncPending);
+    return;
+  }
+
   todos = doc.todos;
   loadedUpdatedAt = doc.updated_at;
-  pendingMutates = []; // a fresh full reload supersedes any unsynced local queue
+  pendingOps = [];
+  clearPersistedQueue();
   render();
   updateSyncStatus(new Date());
   showScreen("list");
 }
 
-// Applies one local edit optimistically (instant render, no network wait),
-// then queues it to be pushed to Dropbox in the background. `mutate` is
-// applied to `todos` immediately and re-applied to a freshly-fetched remote
-// copy at sync time, so it must be a pure function of the list it's given
-// (no fresh IDs/timestamps generated inside it — see addTodo/toggleTodo).
-function applyEdit(mutate) {
-  mutate(todos);
+// Applies one local edit op optimistically (instant render, no network
+// wait), persists the queue so it survives a killed process, then syncs it
+// to Dropbox in the background.
+function applyEdit(op) {
+  applyOp(todos, op);
   render();
-  pendingMutates.push(mutate);
+  pendingOps.push(op);
+  persistQueue();
   syncChain = syncChain.then(syncPending);
 }
 
-// Flushes pendingMutates using read-check-write (spec section 6, step 2).
+// Flushes pendingOps using read-check-write (spec section 6, step 2).
 // Serialized via syncChain so overlapping edits don't race each other's
-// Dropbox round trip. On failure (including offline), pendingMutates is
-// left intact so the next edit or a manual retry (refresh button) resumes
-// from where it left off — nothing already shown on screen is discarded.
+// Dropbox round trip. On failure (including offline), pendingOps is left
+// intact (and already persisted) so the next edit, a manual retry (refresh
+// button), or the next app open resumes from where it left off — nothing
+// already shown on screen is discarded.
 async function syncPending() {
-  if (pendingMutates.length === 0) return;
+  if (pendingOps.length === 0) return;
   setSyncState("syncing");
   try {
     const remoteDoc = await fetchRemoteDoc();
@@ -403,14 +556,15 @@ async function syncPending() {
     if (remoteDoc.updated_at !== loadedUpdatedAt) {
       todos = remoteDoc.todos;
       loadedUpdatedAt = remoteDoc.updated_at;
-      pendingMutates = [];
+      pendingOps = [];
+      clearPersistedQueue();
       render();
       setSyncState("synced");
       toast("List changed elsewhere — reloading latest. Please redo your edit.");
       return;
     }
 
-    for (const mutate of pendingMutates) mutate(remoteDoc.todos);
+    for (const op of pendingOps) applyOp(remoteDoc.todos, op);
     remoteDoc.updated_at = new Date().toISOString();
 
     const text = await encryptPayload(cryptoKey, remoteDoc);
@@ -418,7 +572,8 @@ async function syncPending() {
 
     todos = remoteDoc.todos;
     loadedUpdatedAt = remoteDoc.updated_at;
-    pendingMutates = [];
+    pendingOps = [];
+    clearPersistedQueue();
     render();
     setSyncState("synced");
   } catch (err) {
@@ -430,26 +585,16 @@ async function syncPending() {
 function addTodo(text) {
   const trimmed = text.trim();
   if (!trimmed) return;
-  const id = crypto.randomUUID();
   const now = new Date().toISOString();
-  applyEdit((list) => {
-    list.push({ id, text: trimmed, done: false, created_at: now, updated_at: now });
-  });
+  applyEdit({ type: "add", todo: { id: crypto.randomUUID(), text: trimmed, done: false, created_at: now, updated_at: now } });
 }
 
 function toggleTodo(id) {
-  const now = new Date().toISOString();
-  applyEdit((list) => {
-    const t = list.find((x) => x.id === id);
-    if (t) { t.done = !t.done; t.updated_at = now; }
-  });
+  applyEdit({ type: "toggle", id, now: new Date().toISOString() });
 }
 
 function deleteTodo(id) {
-  applyEdit((list) => {
-    const idx = list.findIndex((x) => x.id === id);
-    if (idx > -1) list.splice(idx, 1);
-  });
+  applyEdit({ type: "delete", id });
 }
 
 // Sub-todos are one level deep only: `children` lives on a top-level todo,
@@ -457,39 +602,16 @@ function deleteTodo(id) {
 function addSubTodo(parentId, text) {
   const trimmed = text.trim();
   if (!trimmed) return;
-  const id = crypto.randomUUID();
   const now = new Date().toISOString();
-  applyEdit((list) => {
-    const parent = list.find((x) => x.id === parentId);
-    if (!parent) return;
-    if (!parent.children) parent.children = [];
-    parent.children.push({ id, text: trimmed, done: false, created_at: now, updated_at: now });
-    parent.updated_at = now;
-  });
+  applyEdit({ type: "addSub", parentId, now, todo: { id: crypto.randomUUID(), text: trimmed, done: false, created_at: now, updated_at: now } });
 }
 
 function toggleSubTodo(parentId, childId) {
-  const now = new Date().toISOString();
-  applyEdit((list) => {
-    const parent = list.find((x) => x.id === parentId);
-    const child = parent && parent.children && parent.children.find((c) => c.id === childId);
-    if (!child) return;
-    child.done = !child.done;
-    child.updated_at = now;
-    parent.updated_at = now;
-  });
+  applyEdit({ type: "toggleSub", parentId, childId, now: new Date().toISOString() });
 }
 
 function deleteSubTodo(parentId, childId) {
-  applyEdit((list) => {
-    const parent = list.find((x) => x.id === parentId);
-    if (!parent || !parent.children) return;
-    const idx = parent.children.findIndex((c) => c.id === childId);
-    if (idx > -1) {
-      parent.children.splice(idx, 1);
-      parent.updated_at = new Date().toISOString();
-    }
-  });
+  applyEdit({ type: "deleteSub", parentId, childId, now: new Date().toISOString() });
 }
 
 // Combined rename + due-date mutators for the inline edit form. `patch.due_date`
@@ -497,48 +619,20 @@ function deleteSubTodo(parentId, childId) {
 function editTodo(id, patch) {
   const trimmed = (patch.text || "").trim();
   if (!trimmed) return;
-  const now = new Date().toISOString();
-  applyEdit((list) => {
-    const t = list.find((x) => x.id === id);
-    if (!t) return;
-    t.text = trimmed;
-    if (patch.due_date) {
-      t.due_date = patch.due_date;
-      if (patch.due_time) t.due_time = patch.due_time; else delete t.due_time;
-    } else {
-      delete t.due_date;
-      delete t.due_time;
-    }
-    t.updated_at = now;
-  });
+  applyEdit({ type: "edit", id, now: new Date().toISOString(), patch: { text: trimmed, due_date: patch.due_date, due_time: patch.due_time } });
 }
 
 function editSubTodo(parentId, childId, patch) {
   const trimmed = (patch.text || "").trim();
   if (!trimmed) return;
-  const now = new Date().toISOString();
-  applyEdit((list) => {
-    const parent = list.find((x) => x.id === parentId);
-    const child = parent && parent.children && parent.children.find((c) => c.id === childId);
-    if (!child) return;
-    child.text = trimmed;
-    if (patch.due_date) {
-      child.due_date = patch.due_date;
-      if (patch.due_time) child.due_time = patch.due_time; else delete child.due_time;
-    } else {
-      delete child.due_date;
-      delete child.due_time;
-    }
-    child.updated_at = now;
-    parent.updated_at = now;
-  });
+  applyEdit({ type: "editSub", parentId, childId, now: new Date().toISOString(), patch: { text: trimmed, due_date: patch.due_date, due_time: patch.due_time } });
 }
 
 // Deletes immediately (swipe has no separate confirm step) but snapshots the
 // item first and offers an Undo toast that re-adds it via a fresh applyEdit
 // push — this works correctly even if the delete has already synced to
 // Dropbox by the time Undo is tapped, since it never tries to cancel/splice
-// an already-queued or already-flushed mutator.
+// an already-queued or already-flushed op.
 function deleteTodoWithUndo(id) {
   const todo = todos.find((t) => t.id === id);
   if (!todo) return;
@@ -546,7 +640,7 @@ function deleteTodoWithUndo(id) {
   deleteTodo(id);
   toast('Deleted "' + todo.text + '"', {
     label: "Undo",
-    onClick: () => applyEdit((list) => { list.push(snapshot); }),
+    onClick: () => applyEdit({ type: "add", todo: snapshot }),
   });
 }
 
@@ -558,12 +652,9 @@ function deleteSubTodoWithUndo(parentId, childId) {
   deleteSubTodo(parentId, childId);
   toast('Deleted "' + child.text + '"', {
     label: "Undo",
-    onClick: () => applyEdit((list) => {
-      const p = list.find((x) => x.id === parentId);
-      if (!p) return; // parent was also deleted meanwhile — undo silently no-ops
-      if (!p.children) p.children = [];
-      p.children.push(snapshot);
-    }),
+    // parent may have been deleted meanwhile — applyOp's "addSub" case
+    // already no-ops silently if the parent id isn't found.
+    onClick: () => applyEdit({ type: "addSub", parentId, now: new Date().toISOString(), todo: snapshot }),
   });
 }
 
@@ -632,7 +723,7 @@ function wireEvents() {
   el("refreshBtn").onclick = () => {
     // Retry rather than reload if there's an unsynced edit — a full reload
     // would fetch the remote copy and discard what's only shown locally.
-    if (pendingMutates.length > 0) syncChain = syncChain.then(syncPending);
+    if (pendingOps.length > 0) syncChain = syncChain.then(syncPending);
     else loadAndRender();
   };
 
@@ -643,15 +734,16 @@ function wireEvents() {
   };
 
   el("disconnectBtn").onclick = () => {
-    const warning = pendingMutates.length > 0
+    const warning = pendingOps.length > 0
       ? "You have unsynced changes that haven't reached Dropbox yet. Disconnecting will lose them. Disconnect anyway?"
       : "Disconnect this device from Dropbox? You can reconnect any time.";
     if (!confirm(warning)) return;
     DropboxAuth.unlink();
     localStorage.removeItem(LS_KEY_CACHE);
+    clearPersistedQueue();
     cryptoKey = null;
     todos = [];
-    pendingMutates = [];
+    pendingOps = [];
     el("settingsPanel").classList.remove("open");
     showScreen("connect");
   };
