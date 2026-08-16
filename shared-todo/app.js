@@ -77,9 +77,9 @@ function toast(message, action) {
 }
 
 function updateSyncStatus(date) {
-  const text = "Last synced " + date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const text = "Last synced " + date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
   el("syncStatus").textContent = text;
-  el("settingsSyncTime").textContent = date.toLocaleString();
+  el("settingsSyncTime").textContent = date.toLocaleString([], { hour12: false });
 }
 
 // Reflects the current sync/queue state in the sync line (spinner while
