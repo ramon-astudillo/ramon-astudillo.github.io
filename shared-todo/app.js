@@ -108,15 +108,33 @@ function render() {
   el("emptyState").hidden = sorted.length !== 0;
 }
 
-// Pure: maps a "YYYY-MM-DD" due date to a display label + CSS class,
-// comparing at day resolution (no time component) so it's timezone-stable.
-function daysLeftLabel(dueDateStr) {
-  const today = new Date();
-  const todayStr = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, "0") + "-" + String(today.getDate()).padStart(2, "0");
+function formatDuration(mins) {
+  if (mins < 60) return mins + "m";
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m === 0 ? h + "h" : h + "h" + m + "m";
+}
+
+// Pure: maps a "YYYY-MM-DD" due date (+ optional "HH:MM" due time) to a
+// display label + CSS class. Day-level comparisons are timezone-stable (no
+// time component); when the due date is today AND a due time is set, shows
+// a countdown/overdue-by in hours+minutes instead of just "Today" — an
+// all-day due date (no time) has no specific moment to count down to, so it
+// keeps showing "Today" plain.
+function daysLeftLabel(dueDateStr, dueTimeStr) {
+  const now = new Date();
+  const todayStr = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0") + "-" + String(now.getDate()).padStart(2, "0");
   const oneDay = 86400000;
   const dToday = new Date(todayStr + "T00:00:00");
   const dDue = new Date(dueDateStr + "T00:00:00");
   const diffDays = Math.round((dDue - dToday) / oneDay);
+
+  if (diffDays === 0 && dueTimeStr) {
+    const dueMoment = new Date(dueDateStr + "T" + dueTimeStr + ":00");
+    const diffMinutes = Math.round((dueMoment - now) / 60000);
+    if (diffMinutes >= 0) return { text: formatDuration(diffMinutes), cls: "today" };
+    return { text: "-" + formatDuration(-diffMinutes), cls: "overdue" };
+  }
   if (diffDays === 0) return { text: "Today", cls: "today" };
   if (diffDays < 0) return { text: diffDays + "d", cls: "overdue" };
   return { text: diffDays + "d", cls: "" };
@@ -124,7 +142,7 @@ function daysLeftLabel(dueDateStr) {
 
 function renderDaysBadge(entity) {
   if (!entity.due_date) return null;
-  const { text, cls } = daysLeftLabel(entity.due_date);
+  const { text, cls } = daysLeftLabel(entity.due_date, entity.due_time);
   const span = document.createElement("span");
   span.className = "todo-days" + (cls ? " " + cls : "");
   span.textContent = text;
