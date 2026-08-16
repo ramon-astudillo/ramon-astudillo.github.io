@@ -7,7 +7,7 @@ let todos = [];         // in-memory list, includes any not-yet-synced optimisti
 let loadedUpdatedAt = null; // updated_at of the version we last read from Dropbox
 let pendingMutates = []; // edits applied locally but not yet confirmed on Dropbox
 let syncChain = Promise.resolve(); // serializes background syncs so edits don't race
-const expandedIds = new Set(); // todo IDs whose sub-todos are currently shown (local UI state, not synced)
+const expandedIds = new Set(); // todo/sub-todo IDs whose edit/add menu is currently expanded (local UI state, not synced; ids are UUIDs so one Set covers both levels)
 
 const el = (id) => document.getElementById(id);
 
@@ -27,12 +27,22 @@ function showScreen(name) {
   el("settingsBtn").hidden = !isList;
 }
 
-function toast(message) {
+// `action` (optional): { label, onClick } — renders an inline button in the
+// toast, used for the delete-undo affordance. Left plain for simple messages.
+function toast(message, action) {
   const t = el("toast");
-  t.textContent = message;
+  t.innerHTML = "";
+  t.appendChild(document.createTextNode(message));
+  if (action) {
+    const btn = document.createElement("button");
+    btn.className = "toast-action";
+    btn.textContent = action.label;
+    btn.onclick = () => { action.onClick(); t.classList.remove("show"); };
+    t.appendChild(btn);
+  }
   t.classList.add("show");
   clearTimeout(toast._timer);
-  toast._timer = setTimeout(() => t.classList.remove("show"), 2800);
+  toast._timer = setTimeout(() => t.classList.remove("show"), action ? 5000 : 2800);
 }
 
 function updateSyncStatus(date) {
@@ -67,50 +77,137 @@ function render() {
   el("emptyState").hidden = sorted.length !== 0;
 }
 
+// Pure: maps a "YYYY-MM-DD" due date to a display label + CSS class,
+// comparing at day resolution (no time component) so it's timezone-stable.
+function daysLeftLabel(dueDateStr) {
+  const today = new Date();
+  const todayStr = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, "0") + "-" + String(today.getDate()).padStart(2, "0");
+  const oneDay = 86400000;
+  const dToday = new Date(todayStr + "T00:00:00");
+  const dDue = new Date(dueDateStr + "T00:00:00");
+  const diffDays = Math.round((dDue - dToday) / oneDay);
+  if (diffDays === 0) return { text: "Today", cls: "today" };
+  if (diffDays < 0) return { text: diffDays + "d", cls: "overdue" };
+  return { text: diffDays + "d", cls: "" };
+}
+
+function renderDaysBadge(entity) {
+  if (!entity.due_date) return null;
+  const { text, cls } = daysLeftLabel(entity.due_date);
+  const span = document.createElement("span");
+  span.className = "todo-days" + (cls ? " " + cls : "");
+  span.textContent = text;
+  return span;
+}
+
+// Builds the swipeable row (radio + text + days badge) shared by top-level
+// todos and sub-todos. Clicking anywhere but the radio toggles the caller's
+// expand state; swiping left past a threshold deletes it (see
+// attachSwipeToDelete).
+function renderRow(entity, { isSub, onToggle, onExpandToggle, onDelete }) {
+  const wrap = document.createElement("div");
+  wrap.className = "swipe-wrap";
+
+  const row = document.createElement("div");
+  row.className = "todo-item" + (isSub ? " sub-item" : "");
+
+  const check = document.createElement("button");
+  check.className = "todo-check" + (isSub ? " sub-check" : "") + (entity.done ? " done" : "");
+  check.innerHTML = '<svg viewBox="0 0 24 24" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+  check.onclick = (e) => { e.stopPropagation(); onToggle(); };
+
+  const text = document.createElement("span");
+  text.className = "todo-text" + (entity.done ? " done" : "");
+  text.textContent = entity.text;
+
+  row.append(check, text);
+  const badge = renderDaysBadge(entity);
+  if (badge) row.appendChild(badge);
+
+  row.onclick = () => onExpandToggle();
+
+  wrap.appendChild(row);
+  attachSwipeToDelete(row, onDelete);
+  return wrap;
+}
+
+// Shared rename + due-date form used by both top-level todos and sub-todos.
+function renderEditForm(entity, onSave, onCancel) {
+  const form = document.createElement("form");
+  form.className = "edit-form";
+
+  const textInput = document.createElement("input");
+  textInput.type = "text";
+  textInput.className = "edit-text";
+  textInput.value = entity.text;
+  textInput.required = true;
+
+  const dateInput = document.createElement("input");
+  dateInput.type = "date";
+  dateInput.className = "edit-date";
+  dateInput.value = entity.due_date || "";
+
+  const saveBtn = document.createElement("button");
+  saveBtn.type = "submit";
+  saveBtn.textContent = "Save";
+
+  const cancelBtn = document.createElement("button");
+  cancelBtn.type = "button";
+  cancelBtn.className = "cancel-btn";
+  cancelBtn.textContent = "Cancel";
+  cancelBtn.onclick = onCancel;
+
+  form.append(textInput, dateInput, saveBtn, cancelBtn);
+  form.onsubmit = (e) => {
+    e.preventDefault();
+    onSave({ text: textInput.value, due_date: dateInput.value || null });
+  };
+  return form;
+}
+
 function renderTodoItem(todo) {
   const wrap = document.createElement("li");
   wrap.className = "todo-item-wrap";
 
-  const row = document.createElement("div");
-  row.className = "todo-item";
+  wrap.appendChild(renderRow(todo, {
+    isSub: false,
+    onToggle: () => toggleTodo(todo.id),
+    onExpandToggle: () => { expandedIds.has(todo.id) ? expandedIds.delete(todo.id) : expandedIds.add(todo.id); render(); },
+    onDelete: () => deleteTodoWithUndo(todo.id),
+  }));
 
-  const check = document.createElement("button");
-  check.className = "todo-check" + (todo.done ? " done" : "");
-  check.innerHTML = '<svg viewBox="0 0 24 24" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
-  check.onclick = () => toggleTodo(todo.id);
-
-  const text = document.createElement("span");
-  text.className = "todo-text" + (todo.done ? " done" : "");
-  text.textContent = todo.text;
-
-  row.append(check, text);
-
-  const children = todo.children || [];
   const expanded = expandedIds.has(todo.id);
-  if (children.length > 0) {
-    const doneCount = children.filter((c) => c.done).length;
-    const foldBtn = document.createElement("button");
-    foldBtn.className = "todo-fold";
-    foldBtn.textContent = doneCount + "/" + children.length + (expanded ? " ▾" : " ▸");
-    foldBtn.onclick = () => { expandedIds.has(todo.id) ? expandedIds.delete(todo.id) : expandedIds.add(todo.id); render(); };
-    row.append(foldBtn);
+  const children = todo.children || [];
+
+  if (expanded) {
+    const panel = document.createElement("div");
+    panel.className = "todo-expand";
+
+    panel.appendChild(renderEditForm(
+      todo,
+      (patch) => { editTodo(todo.id, patch); expandedIds.delete(todo.id); render(); },
+      () => { expandedIds.delete(todo.id); render(); }
+    ));
+
+    const addForm = document.createElement("form");
+    addForm.className = "sub-add-row";
+    const addInput = document.createElement("input");
+    addInput.type = "text";
+    addInput.placeholder = "Add sub-todo...";
+    addInput.autocomplete = "off";
+    addForm.onsubmit = (e) => {
+      e.preventDefault();
+      addSubTodo(todo.id, addInput.value);
+      addInput.value = "";
+    };
+    addForm.appendChild(addInput);
+    panel.appendChild(addForm);
+
+    wrap.appendChild(panel);
+
+    if (children.length > 0) wrap.appendChild(renderSubList(todo));
   }
 
-  const addSub = document.createElement("button");
-  addSub.className = "todo-addsub";
-  addSub.title = "Add sub-todo";
-  addSub.textContent = "+";
-  addSub.onclick = () => { expandedIds.add(todo.id); render(); };
-  row.append(addSub);
-
-  const del = document.createElement("button");
-  del.className = "todo-del";
-  del.textContent = "×";
-  del.onclick = () => deleteTodo(todo.id);
-  row.append(del);
-
-  wrap.appendChild(row);
-  if (expanded) wrap.appendChild(renderSubList(todo));
   return wrap;
 }
 
@@ -120,43 +217,99 @@ function renderSubList(todo) {
 
   for (const child of todo.children || []) {
     const li = document.createElement("li");
-    li.className = "sub-item";
+    li.className = "sub-item-wrap";
 
-    const check = document.createElement("button");
-    check.className = "todo-check sub-check" + (child.done ? " done" : "");
-    check.innerHTML = '<svg viewBox="0 0 24 24" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
-    check.onclick = () => toggleSubTodo(todo.id, child.id);
+    li.appendChild(renderRow(child, {
+      isSub: true,
+      onToggle: () => toggleSubTodo(todo.id, child.id),
+      onExpandToggle: () => { expandedIds.has(child.id) ? expandedIds.delete(child.id) : expandedIds.add(child.id); render(); },
+      onDelete: () => deleteSubTodoWithUndo(todo.id, child.id),
+    }));
 
-    const text = document.createElement("span");
-    text.className = "todo-text" + (child.done ? " done" : "");
-    text.textContent = child.text;
+    if (expandedIds.has(child.id)) {
+      const panel = document.createElement("div");
+      panel.className = "todo-expand";
+      panel.appendChild(renderEditForm(
+        child,
+        (patch) => { editSubTodo(todo.id, child.id, patch); expandedIds.delete(child.id); render(); },
+        () => { expandedIds.delete(child.id); render(); }
+      ));
+      li.appendChild(panel);
+    }
 
-    const del = document.createElement("button");
-    del.className = "todo-del";
-    del.textContent = "×";
-    del.onclick = () => deleteSubTodo(todo.id, child.id);
-
-    li.append(check, text, del);
     ul.appendChild(li);
   }
 
-  const addLi = document.createElement("li");
-  addLi.className = "sub-add-row";
-  const form = document.createElement("form");
-  const input = document.createElement("input");
-  input.type = "text";
-  input.placeholder = "Add sub-todo...";
-  input.autocomplete = "off";
-  form.onsubmit = (e) => {
-    e.preventDefault();
-    addSubTodo(todo.id, input.value);
-    input.value = "";
-  };
-  form.appendChild(input);
-  addLi.appendChild(form);
-  ul.appendChild(addLi);
-
   return ul;
+}
+
+// Attaches a left-swipe-to-delete gesture to `rowEl` via Pointer Events
+// (unifies touch + mouse). Vertical drags are left alone so the list still
+// scrolls normally; horizontal drags past SWIPE_DELETE_THRESHOLD (or a fast
+// flick past a smaller distance) call `onDelete`, otherwise the row snaps
+// back. Gesture state is closure-local per row, not shared module state.
+const SWIPE_DEADZONE = 8;
+const SWIPE_DELETE_THRESHOLD = 80;
+
+function attachSwipeToDelete(rowEl, onDelete) {
+  let startX = 0, startY = 0, startTime = 0;
+  let axis = null; // null | "x" | "y", decided once past the deadzone
+  let dx = 0;
+  let suppressClick = false;
+
+  rowEl.addEventListener("pointerdown", (e) => {
+    if (e.button !== undefined && e.button !== 0) return;
+    startX = e.clientX;
+    startY = e.clientY;
+    startTime = e.timeStamp;
+    axis = null;
+    dx = 0;
+    rowEl.classList.add("dragging");
+  });
+
+  rowEl.addEventListener("pointermove", (e) => {
+    if (startTime === 0) return;
+    const curDx = e.clientX - startX;
+    const curDy = e.clientY - startY;
+    if (axis === null) {
+      if (Math.abs(curDx) < SWIPE_DEADZONE && Math.abs(curDy) < SWIPE_DEADZONE) return;
+      axis = Math.abs(curDx) > Math.abs(curDy) ? "x" : "y";
+      if (axis === "x") rowEl.setPointerCapture(e.pointerId);
+    }
+    if (axis !== "x") return;
+    e.preventDefault();
+    dx = Math.min(0, curDx);
+    rowEl.style.transform = "translateX(" + dx + "px)";
+  });
+
+  // Swallow the click a touch/mouse release synthesizes after a horizontal
+  // drag, so a swipe never also toggles the expand panel.
+  rowEl.addEventListener("click", (e) => {
+    if (suppressClick) e.stopImmediatePropagation();
+  }, true);
+
+  const finish = (e) => {
+    if (startTime === 0) return;
+    const elapsed = e.timeStamp - startTime;
+    rowEl.classList.remove("dragging");
+    if (axis === "x") {
+      const velocity = dx / Math.max(elapsed, 1);
+      suppressClick = true;
+      setTimeout(() => { suppressClick = false; }, 0);
+      if (dx < -SWIPE_DELETE_THRESHOLD || (dx < -30 && velocity < -0.5)) {
+        rowEl.style.transform = "translateX(-100%)";
+        setTimeout(onDelete, 150);
+      } else {
+        rowEl.style.transform = "translateX(0)";
+      }
+    }
+    startTime = 0;
+    axis = null;
+    dx = 0;
+  };
+
+  rowEl.addEventListener("pointerup", finish);
+  rowEl.addEventListener("pointercancel", finish);
 }
 
 // updated_at is null here (not a fresh timestamp) so repeated calls before
@@ -306,6 +459,69 @@ function deleteSubTodo(parentId, childId) {
       parent.children.splice(idx, 1);
       parent.updated_at = new Date().toISOString();
     }
+  });
+}
+
+// Combined rename + due-date mutators for the inline edit form. `patch.due_date`
+// is a "YYYY-MM-DD" string to set, or a falsy value to clear the due date.
+function editTodo(id, patch) {
+  const trimmed = (patch.text || "").trim();
+  if (!trimmed) return;
+  const now = new Date().toISOString();
+  applyEdit((list) => {
+    const t = list.find((x) => x.id === id);
+    if (!t) return;
+    t.text = trimmed;
+    if (patch.due_date) t.due_date = patch.due_date; else delete t.due_date;
+    t.updated_at = now;
+  });
+}
+
+function editSubTodo(parentId, childId, patch) {
+  const trimmed = (patch.text || "").trim();
+  if (!trimmed) return;
+  const now = new Date().toISOString();
+  applyEdit((list) => {
+    const parent = list.find((x) => x.id === parentId);
+    const child = parent && parent.children && parent.children.find((c) => c.id === childId);
+    if (!child) return;
+    child.text = trimmed;
+    if (patch.due_date) child.due_date = patch.due_date; else delete child.due_date;
+    child.updated_at = now;
+    parent.updated_at = now;
+  });
+}
+
+// Deletes immediately (swipe has no separate confirm step) but snapshots the
+// item first and offers an Undo toast that re-adds it via a fresh applyEdit
+// push — this works correctly even if the delete has already synced to
+// Dropbox by the time Undo is tapped, since it never tries to cancel/splice
+// an already-queued or already-flushed mutator.
+function deleteTodoWithUndo(id) {
+  const todo = todos.find((t) => t.id === id);
+  if (!todo) return;
+  const snapshot = JSON.parse(JSON.stringify(todo));
+  deleteTodo(id);
+  toast('Deleted "' + todo.text + '"', {
+    label: "Undo",
+    onClick: () => applyEdit((list) => { list.push(snapshot); }),
+  });
+}
+
+function deleteSubTodoWithUndo(parentId, childId) {
+  const parent = todos.find((t) => t.id === parentId);
+  const child = parent && parent.children && parent.children.find((c) => c.id === childId);
+  if (!child) return;
+  const snapshot = JSON.parse(JSON.stringify(child));
+  deleteSubTodo(parentId, childId);
+  toast('Deleted "' + child.text + '"', {
+    label: "Undo",
+    onClick: () => applyEdit((list) => {
+      const p = list.find((x) => x.id === parentId);
+      if (!p) return; // parent was also deleted meanwhile — undo silently no-ops
+      if (!p.children) p.children = [];
+      p.children.push(snapshot);
+    }),
   });
 }
 

@@ -66,11 +66,15 @@
 
   .todo-list { list-style: none; margin: 8px 0; padding: 0; }
   .todo-item-wrap { margin-bottom: 8px; }
+  .swipe-wrap { overflow: hidden; border-radius: 12px; }
   .todo-item {
     display: flex; align-items: center; gap: 12px;
     background: var(--card); border-radius: 12px; padding: 12px 14px;
-    border: 1px solid var(--border);
+    border: 1px solid var(--border); cursor: pointer;
+    touch-action: pan-y; will-change: transform;
+    transition: transform 0.2s ease-out;
   }
+  .todo-item.dragging { transition: none; }
   .todo-check {
     width: 26px; height: 26px; min-width: 26px; border-radius: 50%;
     border: 2px solid var(--accent); background: none; cursor: pointer; padding: 0;
@@ -81,29 +85,34 @@
   .todo-check.done svg { visibility: visible; }
   .todo-text { flex: 1; font-size: 1rem; word-break: break-word; }
   .todo-text.done { text-decoration: line-through; color: var(--done); }
-  .todo-del {
-    background: none; border: none; color: var(--muted); font-size: 1.3rem;
-    padding: 6px 8px; cursor: pointer; min-width: 40px;
+  .todo-days { font-size: 0.8rem; color: var(--muted); white-space: nowrap; }
+  .todo-days.today { color: var(--accent); font-weight: 600; }
+  .todo-days.overdue { color: var(--danger); font-weight: 600; }
+  .todo-expand {
+    background: var(--card); border: 1px solid var(--border); border-top: none;
+    border-radius: 0 0 12px 12px; padding: 10px 14px; margin-top: -8px;
   }
-  .todo-del:active { color: var(--danger); }
-  .todo-fold {
-    background: none; border: none; color: var(--muted); font-size: 0.8rem;
-    padding: 4px 6px; cursor: pointer; white-space: nowrap;
+  .edit-form { display: flex; flex-wrap: wrap; gap: 8px; padding: 6px 0; }
+  .edit-form input[type=text] { flex: 1; min-width: 120px; padding: 8px 10px; font-size: 0.85rem; border-radius: 8px; }
+  .edit-form input[type=date] { flex: 0 0 auto; padding: 8px 10px; font-size: 0.85rem; border-radius: 8px; }
+  .edit-form button[type=submit] {
+    background: var(--accent); color: white; border: none; border-radius: 8px;
+    padding: 8px 14px; font-size: 0.85rem; cursor: pointer;
   }
-  .todo-addsub {
-    background: none; border: none; color: var(--muted); font-size: 1.1rem;
-    padding: 4px 6px; cursor: pointer; min-width: 30px;
+  .edit-form .cancel-btn {
+    background: none; border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 14px; font-size: 0.85rem; cursor: pointer; color: var(--muted);
   }
   .sub-list {
     list-style: none; margin: 4px 0 0 30px; padding: 2px 0 2px 12px;
     border-left: 2px solid var(--border);
   }
-  .sub-item { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+  .sub-item-wrap { margin-bottom: 6px; }
+  .sub-item { padding: 10px 12px; }
   .sub-check { width: 20px; height: 20px; min-width: 20px; }
   .sub-check svg { width: 12px; height: 12px; }
-  .sub-add-row { padding: 6px 0; }
-  .sub-add-row form { display: flex; }
-  .sub-add-row input { padding: 8px 10px; font-size: 0.85rem; border-radius: 8px; }
+  .sub-add-row { padding: 6px 0; display: flex; }
+  .sub-add-row input { flex: 1; padding: 8px 10px; font-size: 0.85rem; border-radius: 8px; }
   .empty-state { color: var(--muted); text-align: center; padding: 40px 16px; font-size: 0.95rem; }
 
   .add-bar {
@@ -125,7 +134,11 @@
     font-size: 0.85rem; opacity: 0; pointer-events: none; transition: opacity 0.2s;
     max-width: 90%; text-align: center; z-index: 50;
   }
-  .toast.show { opacity: 0.95; }
+  .toast.show { opacity: 0.95; pointer-events: auto; }
+  .toast-action {
+    margin-left: 12px; background: none; border: 1px solid rgba(255,255,255,0.4);
+    color: white; border-radius: 12px; padding: 4px 10px; font-size: 0.8rem; cursor: pointer;
+  }
 
   .settings-panel {
     position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: none;
