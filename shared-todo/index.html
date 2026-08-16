@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Shared Todos</title>
-<meta name="theme-color" content="#2f6feb">
+<meta name="theme-color" content="#8e24aa">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -14,8 +14,8 @@
     --card: #ffffff;
     --text: #1c1e21;
     --muted: #6b7280;
-    --accent: #2f6feb;
-    --accent-dark: #1f4fb0;
+    --accent: #8e24aa;
+    --accent-dark: #6a1b9a;
     --danger: #d64545;
     --border: #e3e5e8;
     --done: #9aa0a6;
@@ -196,6 +196,7 @@
     <div class="center-screen" id="screen-loading">
       <span class="spinner"></span>
       <p id="loadingText">Loading...</p>
+      <button class="primary" id="loadingRetryBtn" hidden>Retry</button>
     </div>
 
     <ul class="todo-list" id="todoList" hidden></ul>

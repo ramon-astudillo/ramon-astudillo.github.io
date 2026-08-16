@@ -170,13 +170,21 @@ function emptyTodoDoc() {
 async function fetchRemoteDoc() {
   const text = await DropboxFile.download();
   if (text === null) return emptyTodoDoc();
-  return decryptPayload(cryptoKey, text);
+  try {
+    return await decryptPayload(cryptoKey, text);
+  } catch (err) {
+    // Distinguishes "the key is wrong" from "couldn't reach Dropbox" so
+    // callers don't discard a perfectly good cached key over a network blip.
+    err.isKeyError = true;
+    throw err;
+  }
 }
 
 // Initial load on app open (spec section 6, step 1).
 async function loadAndRender() {
   showScreen("loading");
   el("loadingText").textContent = "Loading your list...";
+  el("loadingRetryBtn").hidden = true;
   const doc = await fetchRemoteDoc();
   todos = doc.todos;
   loadedUpdatedAt = doc.updated_at;
@@ -331,9 +339,20 @@ async function tryStoredKey() {
     return true;
   } catch (err) {
     console.error(err);
-    localStorage.removeItem(LS_KEY_CACHE);
-    cryptoKey = null;
-    return false;
+    if (err.isKeyError) {
+      // The cached key genuinely doesn't decrypt the remote doc — drop it
+      // and fall back to the passphrase screen.
+      localStorage.removeItem(LS_KEY_CACHE);
+      cryptoKey = null;
+      return false;
+    }
+    // Some other failure (offline, Dropbox token refresh failed, etc).
+    // The cached key is still good — don't force a passphrase re-entry,
+    // just let the user retry the load.
+    showScreen("loading");
+    el("loadingText").textContent = "Couldn't reach Dropbox. Check your connection and retry.";
+    el("loadingRetryBtn").hidden = false;
+    return true;
   }
 }
 
@@ -383,6 +402,8 @@ function wireEvents() {
     localStorage.removeItem(LS_KEY_CACHE);
     toast("This device will ask for the passphrase next time.");
   };
+
+  el("loadingRetryBtn").onclick = () => tryStoredKey();
 }
 
 async function main() {
