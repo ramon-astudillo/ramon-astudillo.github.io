@@ -7,7 +7,8 @@ let todos = [];         // in-memory list, includes any not-yet-synced optimisti
 let loadedUpdatedAt = null; // updated_at of the version we last read from Dropbox
 let pendingMutates = []; // edits applied locally but not yet confirmed on Dropbox
 let syncChain = Promise.resolve(); // serializes background syncs so edits don't race
-const expandedIds = new Set(); // todo/sub-todo IDs whose edit/add menu is currently expanded (local UI state, not synced; ids are UUIDs so one Set covers both levels)
+const editingIds = new Set(); // todo/sub-todo IDs whose rename/date edit panel is open (local UI state, not synced; ids are UUIDs so one Set covers both levels)
+const shownChildrenIds = new Set(); // top-level todo IDs whose sub-todo list + add-sub-todo form is shown (local UI state, not synced)
 
 const el = (id) => document.getElementById(id);
 
@@ -100,11 +101,14 @@ function renderDaysBadge(entity) {
   return span;
 }
 
-// Builds the swipeable row (radio + text + days badge) shared by top-level
-// todos and sub-todos. Clicking anywhere but the radio toggles the caller's
-// expand state; swiping left past a threshold deletes it (see
-// attachSwipeToDelete).
-function renderRow(entity, { isSub, onToggle, onExpandToggle, onDelete }) {
+const EDIT_PENCIL_SVG = '<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>';
+
+// Builds the swipeable row (radio + text + days badge + edit icon) shared by
+// top-level todos and sub-todos. The edit icon always toggles the rename/date
+// panel; `onRowClick` (top-level only) toggles the sub-todo list separately —
+// the two are independent so opening one doesn't force the other open too.
+// Swiping left past a threshold deletes the row (see attachSwipeToDelete).
+function renderRow(entity, { isSub, onToggle, onEditToggle, onRowClick, onDelete }) {
   const wrap = document.createElement("div");
   wrap.className = "swipe-wrap";
 
@@ -124,14 +128,25 @@ function renderRow(entity, { isSub, onToggle, onExpandToggle, onDelete }) {
   const badge = renderDaysBadge(entity);
   if (badge) row.appendChild(badge);
 
-  row.onclick = () => onExpandToggle();
+  const editBtn = document.createElement("button");
+  editBtn.className = "todo-edit";
+  editBtn.title = "Edit";
+  editBtn.innerHTML = EDIT_PENCIL_SVG;
+  editBtn.onclick = (e) => { e.stopPropagation(); onEditToggle(); };
+  row.appendChild(editBtn);
+
+  if (onRowClick) row.onclick = onRowClick;
+  else row.classList.add("no-row-click");
 
   wrap.appendChild(row);
   attachSwipeToDelete(row, onDelete);
   return wrap;
 }
 
-// Shared rename + due-date form used by both top-level todos and sub-todos.
+// Shared rename + due-date/time form used by both top-level todos and
+// sub-todos. Time is optional and only meaningful when a date is set — if
+// the date is cleared, any time is dropped with it; if a date is set with no
+// time, callers treat that as start-of-day (00:00).
 function renderEditForm(entity, onSave, onCancel) {
   const form = document.createElement("form");
   form.className = "edit-form";
@@ -147,6 +162,11 @@ function renderEditForm(entity, onSave, onCancel) {
   dateInput.className = "edit-date";
   dateInput.value = entity.due_date || "";
 
+  const timeInput = document.createElement("input");
+  timeInput.type = "time";
+  timeInput.className = "edit-time";
+  timeInput.value = entity.due_time || "";
+
   const saveBtn = document.createElement("button");
   saveBtn.type = "submit";
   saveBtn.textContent = "Save";
@@ -157,10 +177,14 @@ function renderEditForm(entity, onSave, onCancel) {
   cancelBtn.textContent = "Cancel";
   cancelBtn.onclick = onCancel;
 
-  form.append(textInput, dateInput, saveBtn, cancelBtn);
+  form.append(textInput, dateInput, timeInput, saveBtn, cancelBtn);
   form.onsubmit = (e) => {
     e.preventDefault();
-    onSave({ text: textInput.value, due_date: dateInput.value || null });
+    onSave({
+      text: textInput.value,
+      due_date: dateInput.value || null,
+      due_time: dateInput.value ? (timeInput.value || null) : null,
+    });
   };
   return form;
 }
@@ -172,75 +196,81 @@ function renderTodoItem(todo) {
   wrap.appendChild(renderRow(todo, {
     isSub: false,
     onToggle: () => toggleTodo(todo.id),
-    onExpandToggle: () => { expandedIds.has(todo.id) ? expandedIds.delete(todo.id) : expandedIds.add(todo.id); render(); },
+    onEditToggle: () => { editingIds.has(todo.id) ? editingIds.delete(todo.id) : editingIds.add(todo.id); render(); },
+    onRowClick: () => { shownChildrenIds.has(todo.id) ? shownChildrenIds.delete(todo.id) : shownChildrenIds.add(todo.id); render(); },
     onDelete: () => deleteTodoWithUndo(todo.id),
   }));
 
-  const expanded = expandedIds.has(todo.id);
-  const children = todo.children || [];
-
-  if (expanded) {
+  if (editingIds.has(todo.id)) {
     const panel = document.createElement("div");
     panel.className = "todo-expand";
-
     panel.appendChild(renderEditForm(
       todo,
-      (patch) => { editTodo(todo.id, patch); expandedIds.delete(todo.id); render(); },
-      () => { expandedIds.delete(todo.id); render(); }
+      (patch) => { editTodo(todo.id, patch); editingIds.delete(todo.id); render(); },
+      () => { editingIds.delete(todo.id); render(); }
     ));
-
-    const addForm = document.createElement("form");
-    addForm.className = "sub-add-row";
-    const addInput = document.createElement("input");
-    addInput.type = "text";
-    addInput.placeholder = "Add sub-todo...";
-    addInput.autocomplete = "off";
-    addForm.onsubmit = (e) => {
-      e.preventDefault();
-      addSubTodo(todo.id, addInput.value);
-      addInput.value = "";
-    };
-    addForm.appendChild(addInput);
-    panel.appendChild(addForm);
-
     wrap.appendChild(panel);
-
-    if (children.length > 0) wrap.appendChild(renderSubList(todo));
   }
+
+  if (shownChildrenIds.has(todo.id)) wrap.appendChild(renderChildrenSection(todo));
 
   return wrap;
 }
 
-function renderSubList(todo) {
-  const ul = document.createElement("ul");
-  ul.className = "sub-list";
+// The sub-todo list plus its "add sub-todo" input, shown together when a
+// top-level row is clicked. Sub-todos never get their own add-sub-todo
+// affordance — nesting stays exactly one level deep.
+function renderChildrenSection(todo) {
+  const section = document.createElement("div");
+  section.className = "children-section";
 
-  for (const child of todo.children || []) {
-    const li = document.createElement("li");
-    li.className = "sub-item-wrap";
+  const children = todo.children || [];
+  if (children.length > 0) {
+    const ul = document.createElement("ul");
+    ul.className = "sub-list";
 
-    li.appendChild(renderRow(child, {
-      isSub: true,
-      onToggle: () => toggleSubTodo(todo.id, child.id),
-      onExpandToggle: () => { expandedIds.has(child.id) ? expandedIds.delete(child.id) : expandedIds.add(child.id); render(); },
-      onDelete: () => deleteSubTodoWithUndo(todo.id, child.id),
-    }));
+    for (const child of children) {
+      const li = document.createElement("li");
+      li.className = "sub-item-wrap";
 
-    if (expandedIds.has(child.id)) {
-      const panel = document.createElement("div");
-      panel.className = "todo-expand";
-      panel.appendChild(renderEditForm(
-        child,
-        (patch) => { editSubTodo(todo.id, child.id, patch); expandedIds.delete(child.id); render(); },
-        () => { expandedIds.delete(child.id); render(); }
-      ));
-      li.appendChild(panel);
+      li.appendChild(renderRow(child, {
+        isSub: true,
+        onToggle: () => toggleSubTodo(todo.id, child.id),
+        onEditToggle: () => { editingIds.has(child.id) ? editingIds.delete(child.id) : editingIds.add(child.id); render(); },
+        onDelete: () => deleteSubTodoWithUndo(todo.id, child.id),
+      }));
+
+      if (editingIds.has(child.id)) {
+        const panel = document.createElement("div");
+        panel.className = "todo-expand";
+        panel.appendChild(renderEditForm(
+          child,
+          (patch) => { editSubTodo(todo.id, child.id, patch); editingIds.delete(child.id); render(); },
+          () => { editingIds.delete(child.id); render(); }
+        ));
+        li.appendChild(panel);
+      }
+
+      ul.appendChild(li);
     }
-
-    ul.appendChild(li);
+    section.appendChild(ul);
   }
 
-  return ul;
+  const addForm = document.createElement("form");
+  addForm.className = "sub-add-row";
+  const addInput = document.createElement("input");
+  addInput.type = "text";
+  addInput.placeholder = "Add sub-todo...";
+  addInput.autocomplete = "off";
+  addForm.onsubmit = (e) => {
+    e.preventDefault();
+    addSubTodo(todo.id, addInput.value);
+    addInput.value = "";
+  };
+  addForm.appendChild(addInput);
+  section.appendChild(addForm);
+
+  return section;
 }
 
 // Attaches a left-swipe-to-delete gesture to `rowEl` via Pointer Events
@@ -472,7 +502,13 @@ function editTodo(id, patch) {
     const t = list.find((x) => x.id === id);
     if (!t) return;
     t.text = trimmed;
-    if (patch.due_date) t.due_date = patch.due_date; else delete t.due_date;
+    if (patch.due_date) {
+      t.due_date = patch.due_date;
+      if (patch.due_time) t.due_time = patch.due_time; else delete t.due_time;
+    } else {
+      delete t.due_date;
+      delete t.due_time;
+    }
     t.updated_at = now;
   });
 }
@@ -486,7 +522,13 @@ function editSubTodo(parentId, childId, patch) {
     const child = parent && parent.children && parent.children.find((c) => c.id === childId);
     if (!child) return;
     child.text = trimmed;
-    if (patch.due_date) child.due_date = patch.due_date; else delete child.due_date;
+    if (patch.due_date) {
+      child.due_date = patch.due_date;
+      if (patch.due_time) child.due_time = patch.due_time; else delete child.due_time;
+    } else {
+      delete child.due_date;
+      delete child.due_time;
+    }
     child.updated_at = now;
     parent.updated_at = now;
   });

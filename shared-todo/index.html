@@ -75,6 +75,7 @@
     transition: transform 0.2s ease-out;
   }
   .todo-item.dragging { transition: none; }
+  .todo-item.no-row-click { cursor: default; }
   .todo-check {
     width: 26px; height: 26px; min-width: 26px; border-radius: 50%;
     border: 2px solid var(--accent); background: none; cursor: pointer; padding: 0;
@@ -88,13 +89,21 @@
   .todo-days { font-size: 0.8rem; color: var(--muted); white-space: nowrap; }
   .todo-days.today { color: var(--accent); font-weight: 600; }
   .todo-days.overdue { color: var(--danger); font-weight: 600; }
+  .todo-edit {
+    background: none; border: none; color: var(--muted); padding: 6px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    min-width: 28px;
+  }
+  .todo-edit svg { width: 16px; height: 16px; stroke: currentColor; fill: none; }
+  .todo-edit:active { color: var(--accent); }
   .todo-expand {
     background: var(--card); border: 1px solid var(--border); border-top: none;
     border-radius: 0 0 12px 12px; padding: 10px 14px; margin-top: -8px;
   }
   .edit-form { display: flex; flex-wrap: wrap; gap: 8px; padding: 6px 0; }
   .edit-form input[type=text] { flex: 1; min-width: 120px; padding: 8px 10px; font-size: 0.85rem; border-radius: 8px; }
-  .edit-form input[type=date] { flex: 0 0 auto; padding: 8px 10px; font-size: 0.85rem; border-radius: 8px; }
+  .edit-form input[type=date],
+  .edit-form input[type=time] { flex: 0 0 auto; padding: 8px 10px; font-size: 0.85rem; border-radius: 8px; }
   .edit-form button[type=submit] {
     background: var(--accent); color: white; border: none; border-radius: 8px;
     padding: 8px 14px; font-size: 0.85rem; cursor: pointer;
@@ -103,6 +112,7 @@
     background: none; border: 1px solid var(--border); border-radius: 8px;
     padding: 8px 14px; font-size: 0.85rem; cursor: pointer; color: var(--muted);
   }
+  .children-section { margin-top: 4px; }
   .sub-list {
     list-style: none; margin: 4px 0 0 30px; padding: 2px 0 2px 12px;
     border-left: 2px solid var(--border);
@@ -111,7 +121,7 @@
   .sub-item { padding: 10px 12px; }
   .sub-check { width: 20px; height: 20px; min-width: 20px; }
   .sub-check svg { width: 12px; height: 12px; }
-  .sub-add-row { padding: 6px 0; display: flex; }
+  .sub-add-row { padding: 6px 0 6px 30px; display: flex; }
   .sub-add-row input { flex: 1; padding: 8px 10px; font-size: 0.85rem; border-radius: 8px; }
   .empty-state { color: var(--muted); text-align: center; padding: 40px 16px; font-size: 0.95rem; }
 
