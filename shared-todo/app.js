@@ -173,6 +173,16 @@ function renderRow(entity, { isSub, onToggle, onEditToggle, onRowClick, onDelete
   text.textContent = entity.text;
 
   row.append(check, text);
+
+  const children = entity.children || [];
+  if (!isSub && children.length > 0) {
+    const doneCount = children.filter((c) => c.done).length;
+    const countSpan = document.createElement("span");
+    countSpan.className = "todo-subcount";
+    countSpan.textContent = "(" + doneCount + "/" + children.length + ")";
+    row.appendChild(countSpan);
+  }
+
   const badge = renderDaysBadge(entity);
   if (badge) row.appendChild(badge);
 
