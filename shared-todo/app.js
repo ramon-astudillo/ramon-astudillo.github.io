@@ -661,7 +661,32 @@ function wireEvents() {
     toast("This device will ask for the passphrase next time.");
   };
 
+  el("forceUpdateBtn").onclick = () => forceUpdate();
+
   el("loadingRetryBtn").onclick = () => tryStoredKey();
+}
+
+// Unregisters the service worker and clears its caches, then reloads —
+// a lighter alternative to Android's "Clear storage" that only forces fresh
+// app files (index.html/app.js/etc.) without touching localStorage, so the
+// cached passphrase key and Dropbox refresh token survive and you don't get
+// logged out just to pick up a new deploy.
+async function forceUpdate() {
+  const btn = el("forceUpdateBtn");
+  btn.disabled = true;
+  btn.textContent = "Updating...";
+  try {
+    if ("serviceWorker" in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      for (const reg of regs) await reg.unregister();
+    }
+    if ("caches" in window) {
+      const keys = await caches.keys();
+      for (const key of keys) await caches.delete(key);
+    }
+  } finally {
+    location.reload();
+  }
 }
 
 async function main() {
