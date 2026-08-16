@@ -494,12 +494,22 @@ function applyOp(list, op) {
   }
 }
 
-// Initial load on app open (spec section 6, step 1). If a pending-edit queue
-// survived from a previous session (the JS process was killed — e.g. Android
-// backgrounding — while edits were still unsynced), restore it instead of
-// blindly overwriting with a fresh remote fetch, which would silently
-// discard those edits with no real conflict to justify it.
-async function loadAndRender() {
+// Initial load on app open (spec section 6, step 1). A last-known-good
+// snapshot ({todos, loadedUpdatedAt, pendingOps}) is kept in localStorage at
+// all times (see persistQueue calls below and in syncPending) — not just
+// while edits are pending — so a network failure on open always has
+// something to fall back to instead of blocking on a "couldn't reach
+// Dropbox" screen with no way to view or edit the list.
+//
+// `allowOfflineFallback` gates that fallback: it's only safe when the active
+// cryptoKey has already been validated against real Dropbox data at least
+// once before (i.e. unlocking via the remembered key in tryStoredKey/the
+// refresh button, both past a prior successful online unlock this device).
+// A fresh, never-validated passphrase attempt (unlockWithPassphrase) must
+// NOT be allowed to "succeed" offline against stale cached data — that could
+// silently accept a wrong passphrase and later encrypt edits with the wrong
+// derived key once synced.
+async function loadAndRender(allowOfflineFallback) {
   showScreen("loading");
   el("loadingText").textContent = "Loading your list...";
   el("loadingRetryBtn").hidden = true;
@@ -510,10 +520,10 @@ async function loadAndRender() {
   try {
     doc = await fetchRemoteDoc(); // also validates the passphrase (throws isKeyError on a wrong key)
   } catch (err) {
-    if (err.isKeyError || !cached || cached.pendingOps.length === 0) throw err;
-    // Offline (or Dropbox unreachable) but a previous session left unsynced
-    // edits behind — show them instead of getting stuck on a retry screen;
-    // the sync-status line will retry once connectivity comes back.
+    if (err.isKeyError || !allowOfflineFallback || !cached) throw err;
+    // Offline (or Dropbox unreachable) — fall back to the last-known-good
+    // cache instead of getting stuck; the sync-status line will retry once
+    // connectivity comes back.
     todos = cached.todos;
     loadedUpdatedAt = cached.loadedUpdatedAt;
     pendingOps = cached.pendingOps;
@@ -521,7 +531,9 @@ async function loadAndRender() {
     updateSyncStatus(new Date());
     showScreen("list");
     setSyncState("error");
-    toast("Offline — showing your unsynced changes. Will retry syncing once you're back online.");
+    toast(pendingOps.length > 0
+      ? "Offline — showing your unsynced changes. Will retry syncing once you're back online."
+      : "Offline — showing your last synced list. Edits will sync once you're back online.");
     return;
   }
 
@@ -542,7 +554,7 @@ async function loadAndRender() {
   todos = doc.todos;
   loadedUpdatedAt = doc.updated_at;
   pendingOps = [];
-  clearPersistedQueue();
+  persistQueue(); // keep a last-known-good cache around for a future offline open
   render();
   updateSyncStatus(new Date());
   showScreen("list");
@@ -575,7 +587,7 @@ async function syncPending() {
       todos = remoteDoc.todos;
       loadedUpdatedAt = remoteDoc.updated_at;
       pendingOps = [];
-      clearPersistedQueue();
+      persistQueue(); // keep the last-known-good cache, just with an empty queue now
       render();
       setSyncState("synced");
       toast("List changed elsewhere — reloading latest. Please redo your edit.");
@@ -591,7 +603,7 @@ async function syncPending() {
     todos = remoteDoc.todos;
     loadedUpdatedAt = remoteDoc.updated_at;
     pendingOps = [];
-    clearPersistedQueue();
+    persistQueue(); // keep the last-known-good cache, just with an empty queue now
     render();
     setSyncState("synced");
   } catch (err) {
@@ -683,7 +695,10 @@ async function unlockWithPassphrase(passphrase, remember) {
   try {
     const key = await deriveKeyFromPassphrase(passphrase);
     cryptoKey = key;
-    await loadAndRender(); // throws if the passphrase is wrong (decrypt/auth-tag failure)
+    // allowOfflineFallback=false: this passphrase has never been validated
+    // online before, so a network failure must not "succeed" against stale
+    // cached data — it should surface as an error instead (see loadAndRender).
+    await loadAndRender(false); // throws if the passphrase is wrong (decrypt/auth-tag failure) or unreachable
     if (remember) {
       localStorage.setItem(LS_KEY_CACHE, await exportKeyToBase64(key));
     } else {
@@ -702,7 +717,9 @@ async function tryStoredKey() {
   if (!cached) return false;
   try {
     cryptoKey = await importKeyFromBase64(cached);
-    await loadAndRender();
+    // allowOfflineFallback=true: this key was only ever cached after a prior
+    // successful online unlock, so it's safe to trust offline.
+    await loadAndRender(true);
     return true;
   } catch (err) {
     console.error(err);
@@ -741,8 +758,10 @@ function wireEvents() {
   el("refreshBtn").onclick = () => {
     // Retry rather than reload if there's an unsynced edit — a full reload
     // would fetch the remote copy and discard what's only shown locally.
+    // allowOfflineFallback=true: reaching this button means the user is
+    // already past a validated unlock this session.
     if (pendingOps.length > 0) syncChain = syncChain.then(syncPending);
-    else loadAndRender();
+    else loadAndRender(true);
   };
 
   el("settingsBtn").onclick = () => el("settingsPanel").classList.add("open");
