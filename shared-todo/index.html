@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>Shared Todos</title>
+<title>Lists</title>
 <meta name="theme-color" content="#8e24aa">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
@@ -35,6 +35,27 @@
   }
   header h1 { font-size: 1.25rem; margin: 0; }
   .sync-line { font-size: 0.75rem; color: var(--muted); padding: 0 16px 8px; display: flex; justify-content: space-between; align-items: center; }
+  .tab-bar { display: flex; gap: 4px; padding: 0 12px 8px; overflow-x: auto; }
+  .tab-btn {
+    background: none; border: none; border-radius: 10px; padding: 8px 12px;
+    color: var(--muted); cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .tab-btn svg { width: 20px; height: 20px; stroke: currentColor; fill: none; }
+  .tab-btn.active { background: var(--card); color: var(--accent); }
+  .manage-boards-list { margin: 4px 0 10px; }
+  .manage-board-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; }
+  .manage-board-row svg { width: 18px; height: 18px; stroke: var(--muted); fill: none; flex: none; }
+  .manage-board-row span { flex: 1; font-size: 0.9rem; }
+  .manage-board-row button { background: none; border: none; color: var(--muted); cursor: pointer; padding: 4px; }
+  .icon-picker { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
+  .icon-picker button {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px;
+    cursor: pointer; display: flex; color: var(--muted);
+  }
+  .icon-picker button.selected { border-color: var(--accent); color: var(--accent); }
+  .icon-picker svg { width: 18px; height: 18px; stroke: currentColor; fill: none; }
+  .add-board-form { display: flex; flex-direction: column; gap: 8px; padding-top: 8px; border-top: 1px solid var(--border); margin-top: 4px; }
+  .add-board-form input[type=text] { padding: 8px 10px; font-size: 0.85rem; border-radius: 8px; }
   .icon-btn {
     background: none; border: none; font-size: 1.3rem; padding: 8px; line-height: 1;
     color: var(--muted); cursor: pointer;
@@ -190,9 +211,10 @@
 <div id="app">
 
   <header>
-    <h1>Shared Todos</h1>
+    <h1 id="headerTitle">Lists</h1>
     <button class="icon-btn" id="settingsBtn" title="Settings" hidden>&#9881;</button>
   </header>
+  <div class="tab-bar" id="tabBar" hidden></div>
   <div class="sync-line" id="syncLine" hidden>
     <span id="syncStatus">Not synced yet</span>
     <button class="icon-btn" id="refreshBtn" title="Refresh">&#8635;</button>
@@ -205,7 +227,7 @@
     </div>
 
     <div class="center-screen" id="screen-passphrase" hidden>
-      <p id="passphrasePrompt">Enter the shared passphrase to unlock your todo list.</p>
+      <p id="passphrasePrompt">Enter the shared passphrase to unlock this list.</p>
       <div class="warn-box">There is no password recovery. If the passphrase is lost, the data cannot be decrypted. Write it down somewhere safe.</div>
       <form id="passphraseForm" style="width:100%; max-width:320px; display:flex; flex-direction:column; gap:12px;">
         <input type="password" id="passphraseInput" placeholder="Passphrase" autocomplete="current-password" required>
@@ -224,12 +246,12 @@
     </div>
 
     <ul class="todo-list" id="todoList" hidden></ul>
-    <div class="empty-state" id="emptyState" hidden>No todos yet. Add one below.</div>
+    <div class="empty-state" id="emptyState" hidden>Nothing here yet. Add one below.</div>
   </main>
 
   <div class="add-bar" id="addBar" hidden>
     <form id="addForm">
-      <input type="text" id="addInput" placeholder="Add a todo..." autocomplete="off">
+      <input type="text" id="addInput" placeholder="Add an item..." autocomplete="off">
       <button type="submit">+</button>
     </form>
   </div>
@@ -243,6 +265,13 @@
       <div class="row"><span>Remembered passphrase</span><button class="secondary" id="forgetKeyBtn">Forget on this device</button></div>
       <div class="row"><span>Last synced</span><span id="settingsSyncTime">—</span></div>
       <div class="row"><span>App version</span><button class="secondary" id="forceUpdateBtn">Check for update</button></div>
+      <h2 style="margin-top:16px;">Lists</h2>
+      <div class="manage-boards-list" id="manageBoardsList"></div>
+      <form class="add-board-form" id="addBoardForm">
+        <input type="text" id="addBoardName" placeholder="New list name..." autocomplete="off" required>
+        <div class="icon-picker" id="addBoardIconPicker"></div>
+        <button class="secondary" type="submit">Add list</button>
+      </form>
       <div class="close-row"><button id="closeSettingsBtn">Close</button></div>
     </div>
   </div>

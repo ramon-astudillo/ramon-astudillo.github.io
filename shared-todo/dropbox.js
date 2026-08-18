@@ -127,15 +127,15 @@ const DropboxAuth = (() => {
 })();
 
 const DropboxFile = (() => {
-  // Downloads CONFIG.TODO_FILE_PATH. Returns the raw text, or null if the
-  // file doesn't exist yet (first run).
-  async function download() {
+  // Downloads `path`. Returns the raw text, or null if the file doesn't
+  // exist yet (first run).
+  async function download(path) {
     const token = await DropboxAuth.getAccessToken();
     const resp = await fetch("https://content.dropboxapi.com/2/files/download", {
       method: "POST",
       headers: {
         Authorization: "Bearer " + token,
-        "Dropbox-API-Arg": JSON.stringify({ path: CONFIG.TODO_FILE_PATH }),
+        "Dropbox-API-Arg": JSON.stringify({ path }),
       },
     });
     if (resp.status === 409) return null; // path/not_found
@@ -143,15 +143,15 @@ const DropboxFile = (() => {
     return resp.text();
   }
 
-  // Overwrites CONFIG.TODO_FILE_PATH with `text`.
-  async function upload(text) {
+  // Overwrites `path` with `text`.
+  async function upload(path, text) {
     const token = await DropboxAuth.getAccessToken();
     const resp = await fetch("https://content.dropboxapi.com/2/files/upload", {
       method: "POST",
       headers: {
         Authorization: "Bearer " + token,
         "Dropbox-API-Arg": JSON.stringify({
-          path: CONFIG.TODO_FILE_PATH,
+          path,
           mode: "overwrite",
           mute: true,
         }),

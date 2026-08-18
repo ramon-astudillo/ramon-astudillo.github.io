@@ -1,7 +1,7 @@
 {
-  "name": "Shared Todos",
-  "short_name": "Todos",
-  "description": "Encrypted shared todo list backed by Dropbox.",
+  "name": "Lists",
+  "short_name": "Lists",
+  "description": "Encrypted synced lists backed by Dropbox.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

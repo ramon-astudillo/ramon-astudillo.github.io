@@ -1,13 +1,23 @@
 // UI + sync orchestration. Wires together dropbox.js and crypto.js.
 
 const LS_KEY_CACHE = "shared_todo_key_cache";
-const LS_QUEUE_KEY = "shared_todo_pending_queue"; // persisted { todos, loadedUpdatedAt, pendingOps }
+const LS_ACTIVE_BOARD = "shared_todo_active_board"; // last-viewed board id, per device
+const LEGACY_TODO_PATH = "/todos.json"; // pre-multi-board data file, migrated into the manifest on first run
 
 let cryptoKey = null;   // CryptoKey, derived from the passphrase
+let boards = [];        // [{ id, label, icon, file }], from the decrypted manifest
+let manifestUpdatedAt = null;
+let currentBoard = null; // the board object currently shown
 let todos = [];         // in-memory list, includes any not-yet-synced optimistic edits
 let loadedUpdatedAt = null; // updated_at of the version we last read from Dropbox
 let pendingOps = []; // serializable edit ops applied locally but not yet confirmed on Dropbox (see applyOp)
 let syncChain = Promise.resolve(); // serializes background syncs so edits don't race
+
+// Queue is namespaced per board so switching tabs never mixes up two
+// boards' unsynced edits.
+function queueKey(boardId) {
+  return "shared_todo_pending_queue_" + boardId;
+}
 
 // Mirrors `todos`/`loadedUpdatedAt`/`pendingOps` into localStorage on every
 // edit so an unsynced queue survives the JS process being killed — e.g.
@@ -18,15 +28,15 @@ let syncChain = Promise.resolve(); // serializes background syncs so edits don't
 // there was no real conflict.
 function persistQueue() {
   try {
-    localStorage.setItem(LS_QUEUE_KEY, JSON.stringify({ todos, loadedUpdatedAt, pendingOps }));
+    localStorage.setItem(queueKey(currentBoard.id), JSON.stringify({ todos, loadedUpdatedAt, pendingOps }));
   } catch (err) {
     console.error(err); // storage full/unavailable — queue just won't survive a reload, not fatal
   }
 }
 
-function loadPersistedQueue() {
+function loadPersistedQueue(boardId) {
   try {
-    const raw = localStorage.getItem(LS_QUEUE_KEY);
+    const raw = localStorage.getItem(queueKey(boardId));
     return raw ? JSON.parse(raw) : null;
   } catch (err) {
     console.error(err);
@@ -34,8 +44,8 @@ function loadPersistedQueue() {
   }
 }
 
-function clearPersistedQueue() {
-  localStorage.removeItem(LS_QUEUE_KEY);
+function clearPersistedQueue(boardId) {
+  localStorage.removeItem(queueKey(boardId));
 }
 const editingIds = new Set(); // todo/sub-todo IDs whose rename/date edit panel is open (local UI state, not synced; ids are UUIDs so one Set covers both levels)
 const shownChildrenIds = new Set(); // top-level todo IDs whose sub-todo list + add-sub-todo form is shown (local UI state, not synced)
@@ -56,6 +66,7 @@ function showScreen(name) {
   el("addBar").hidden = !isList;
   el("syncLine").hidden = !isList;
   el("settingsBtn").hidden = !isList;
+  el("tabBar").hidden = !isList;
 }
 
 // `action` (optional): { label, onClick } — renders an inline button in the
@@ -318,7 +329,7 @@ function renderChildrenSection(todo) {
   addForm.className = "sub-add-row";
   const addInput = document.createElement("input");
   addInput.type = "text";
-  addInput.placeholder = "Add sub-todo...";
+  addInput.placeholder = "Add a sub-item...";
   addInput.autocomplete = "off";
   addForm.onsubmit = (e) => {
     e.preventDefault();
@@ -409,7 +420,7 @@ function emptyTodoDoc() {
 
 // Downloads + decrypts the current remote file (or a fresh empty doc if none exists yet).
 async function fetchRemoteDoc() {
-  const text = await DropboxFile.download();
+  const text = await DropboxFile.download(currentBoard.file);
   if (text === null) return emptyTodoDoc();
   try {
     return await decryptPayload(cryptoKey, text);
@@ -418,6 +429,221 @@ async function fetchRemoteDoc() {
     // callers don't discard a perfectly good cached key over a network blip.
     err.isKeyError = true;
     throw err;
+  }
+}
+
+// --- Boards (tabs) ---------------------------------------------------
+//
+// The manifest (list of boards: id/label/icon/data-file) is itself an
+// encrypted file in the Dropbox App Folder, at the fixed generic path
+// CONFIG.BOARDS_MANIFEST_PATH. This is deliberate: the actual board names
+// and how many boards exist are private data, so they only ever live
+// inside this encrypted file — never in the (public) committed code.
+
+function emptyManifest() {
+  return { version: 1, updated_at: null, boards: [] };
+}
+
+async function fetchManifest() {
+  const text = await DropboxFile.download(CONFIG.BOARDS_MANIFEST_PATH);
+  if (text === null) return null;
+  try {
+    return await decryptPayload(cryptoKey, text);
+  } catch (err) {
+    err.isKeyError = true;
+    throw err;
+  }
+}
+
+const LS_MANIFEST_CACHE = "shared_todo_manifest_cache";
+
+function persistManifestCache() {
+  try {
+    localStorage.setItem(LS_MANIFEST_CACHE, JSON.stringify({ boards, updated_at: manifestUpdatedAt }));
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+function loadManifestCache() {
+  try {
+    const raw = localStorage.getItem(LS_MANIFEST_CACHE);
+    return raw ? JSON.parse(raw) : null;
+  } catch (err) {
+    console.error(err);
+    return null;
+  }
+}
+
+async function saveManifest(manifest) {
+  manifest.updated_at = new Date().toISOString();
+  const text = await encryptPayload(cryptoKey, manifest);
+  await DropboxFile.upload(CONFIG.BOARDS_MANIFEST_PATH, text);
+  manifestUpdatedAt = manifest.updated_at;
+  boards = manifest.boards;
+  persistManifestCache();
+}
+
+// Loads the manifest, creating one on first run. If a pre-multi-board
+// install already has data at the legacy single-file path, that becomes
+// the first board instead of starting empty, so existing lists aren't lost.
+// `allowOfflineFallback` mirrors loadAndRender's flag: only a previously
+// validated key may fall back to the last cached manifest when Dropbox is
+// unreachable.
+async function ensureManifest(allowOfflineFallback) {
+  let manifest;
+  try {
+    manifest = await fetchManifest();
+  } catch (err) {
+    if (err.isKeyError || !allowOfflineFallback) throw err;
+    const cached = loadManifestCache();
+    if (!cached) throw err;
+    boards = cached.boards;
+    manifestUpdatedAt = cached.updated_at;
+    return;
+  }
+
+  if (manifest) {
+    manifestUpdatedAt = manifest.updated_at;
+    boards = manifest.boards;
+    persistManifestCache();
+    return;
+  }
+
+  const legacyText = await DropboxFile.download(LEGACY_TODO_PATH);
+  manifest = emptyManifest();
+  manifest.boards.push({
+    id: crypto.randomUUID(),
+    label: "List 1",
+    icon: "list",
+    file: legacyText !== null ? LEGACY_TODO_PATH : "/board-1.json",
+  });
+  await saveManifest(manifest);
+}
+
+function pickInitialBoard() {
+  const remembered = localStorage.getItem(LS_ACTIVE_BOARD);
+  return boards.find((b) => b.id === remembered) || boards[0];
+}
+
+async function bootstrapBoards(allowOfflineFallback) {
+  await ensureManifest(allowOfflineFallback);
+  currentBoard = pickInitialBoard();
+  localStorage.setItem(LS_ACTIVE_BOARD, currentBoard.id);
+  el("headerTitle").textContent = currentBoard.label;
+  renderTabs();
+}
+
+function renderTabs() {
+  const bar = el("tabBar");
+  bar.innerHTML = "";
+  for (const b of boards) {
+    const btn = document.createElement("button");
+    btn.className = "tab-btn" + (currentBoard && b.id === currentBoard.id ? " active" : "");
+    btn.innerHTML = CONFIG.ICONS[b.icon] || CONFIG.ICONS.list;
+    btn.title = b.label;
+    btn.onclick = () => switchBoard(b.id);
+    bar.appendChild(btn);
+  }
+}
+
+// Switches the active tab. Waits for any in-flight sync of the outgoing
+// board to settle first, since syncChain/todos/pendingOps are scoped to
+// "whichever board is current" — switching mid-sync would otherwise let a
+// stray write land against the wrong board's file.
+async function switchBoard(id) {
+  if (currentBoard && id === currentBoard.id) return;
+  await syncChain;
+  currentBoard = boards.find((b) => b.id === id);
+  localStorage.setItem(LS_ACTIVE_BOARD, currentBoard.id);
+  el("headerTitle").textContent = currentBoard.label;
+  renderTabs();
+  await loadAndRender(true);
+}
+
+function iconPickerHtml(selected) {
+  return Object.keys(CONFIG.ICONS).map((key) =>
+    '<button type="button" data-icon="' + key + '" class="' + (key === selected ? "selected" : "") + '">' + CONFIG.ICONS[key] + '</button>'
+  ).join("");
+}
+
+function wireIconPicker(container, initialSelected) {
+  container.innerHTML = iconPickerHtml(initialSelected);
+  let selected = initialSelected;
+  for (const btn of container.querySelectorAll("button")) {
+    btn.onclick = () => {
+      selected = btn.dataset.icon;
+      for (const b of container.querySelectorAll("button")) b.classList.toggle("selected", b === btn);
+    };
+  }
+  return () => selected;
+}
+
+function renderManageBoards() {
+  const list = el("manageBoardsList");
+  list.innerHTML = "";
+  for (const b of boards) {
+    const row = document.createElement("div");
+    row.className = "manage-board-row";
+    row.innerHTML = CONFIG.ICONS[b.icon] || CONFIG.ICONS.list;
+
+    const nameInput = document.createElement("input");
+    nameInput.type = "text";
+    nameInput.value = b.label;
+    nameInput.style.cssText = "flex:1; border:none; background:none; font-size:0.9rem; color:var(--text); padding:2px;";
+    nameInput.onchange = () => renameBoard(b.id, nameInput.value, b.icon);
+
+    const delBtn = document.createElement("button");
+    delBtn.title = "Delete list";
+    delBtn.textContent = "✕";
+    delBtn.onclick = () => deleteBoard(b.id);
+
+    row.append(nameInput, delBtn);
+    list.appendChild(row);
+  }
+}
+
+async function addBoard(label, icon) {
+  const trimmed = label.trim();
+  if (!trimmed) return;
+  const manifest = await fetchManifest() || emptyManifest();
+  const id = crypto.randomUUID();
+  manifest.boards.push({ id, label: trimmed, icon, file: "/board-" + id + ".json" });
+  await saveManifest(manifest);
+  renderTabs();
+  renderManageBoards();
+}
+
+async function renameBoard(id, label, icon) {
+  const trimmed = label.trim();
+  if (!trimmed) return;
+  const manifest = await fetchManifest() || emptyManifest();
+  const b = manifest.boards.find((x) => x.id === id);
+  if (!b) return;
+  b.label = trimmed;
+  b.icon = icon;
+  await saveManifest(manifest);
+  if (currentBoard && currentBoard.id === id) {
+    currentBoard.label = trimmed;
+    currentBoard.icon = icon;
+    el("headerTitle").textContent = trimmed;
+  }
+  renderTabs();
+}
+
+async function deleteBoard(id) {
+  if (boards.length <= 1) {
+    toast("Can't delete the last list.");
+    return;
+  }
+  if (!confirm("Delete this list? Its items will no longer be reachable from here.")) return;
+  const manifest = await fetchManifest() || emptyManifest();
+  manifest.boards = manifest.boards.filter((b) => b.id !== id);
+  await saveManifest(manifest);
+  renderManageBoards();
+  renderTabs();
+  if (currentBoard && currentBoard.id === id) {
+    await switchBoard(boards[0].id);
   }
 }
 
@@ -524,7 +750,7 @@ async function loadAndRender(allowOfflineFallback) {
   el("loadingText").textContent = "Loading your list...";
   el("loadingRetryBtn").hidden = true;
 
-  const cached = loadPersistedQueue();
+  const cached = loadPersistedQueue(currentBoard.id);
 
   let doc;
   try {
@@ -608,7 +834,7 @@ async function syncPending() {
     remoteDoc.updated_at = new Date().toISOString();
 
     const text = await encryptPayload(cryptoKey, remoteDoc);
-    await DropboxFile.upload(text);
+    await DropboxFile.upload(currentBoard.file, text);
 
     todos = remoteDoc.todos;
     loadedUpdatedAt = remoteDoc.updated_at;
@@ -708,6 +934,7 @@ async function unlockWithPassphrase(passphrase, remember) {
     // allowOfflineFallback=false: this passphrase has never been validated
     // online before, so a network failure must not "succeed" against stale
     // cached data — it should surface as an error instead (see loadAndRender).
+    await bootstrapBoards(false);
     await loadAndRender(false); // throws if the passphrase is wrong (decrypt/auth-tag failure) or unreachable
     if (remember) {
       localStorage.setItem(LS_KEY_CACHE, await exportKeyToBase64(key));
@@ -729,6 +956,7 @@ async function tryStoredKey() {
     cryptoKey = await importKeyFromBase64(cached);
     // allowOfflineFallback=true: this key was only ever cached after a prior
     // successful online unlock, so it's safe to trust offline.
+    await bootstrapBoards(true);
     await loadAndRender(true);
     return true;
   } catch (err) {
@@ -774,10 +1002,22 @@ function wireEvents() {
     else loadAndRender(true);
   };
 
-  el("settingsBtn").onclick = () => el("settingsPanel").classList.add("open");
+  let getAddBoardIcon = () => "list";
+  el("settingsBtn").onclick = () => {
+    renderManageBoards();
+    el("addBoardName").value = "";
+    getAddBoardIcon = wireIconPicker(el("addBoardIconPicker"), "list");
+    el("settingsPanel").classList.add("open");
+  };
   el("closeSettingsBtn").onclick = () => el("settingsPanel").classList.remove("open");
   el("settingsPanel").onclick = (e) => {
     if (e.target === el("settingsPanel")) el("settingsPanel").classList.remove("open");
+  };
+
+  el("addBoardForm").onsubmit = (e) => {
+    e.preventDefault();
+    addBoard(el("addBoardName").value, getAddBoardIcon());
+    el("addBoardName").value = "";
   };
 
   el("disconnectBtn").onclick = () => {
@@ -787,8 +1027,11 @@ function wireEvents() {
     if (!confirm(warning)) return;
     DropboxAuth.unlink();
     localStorage.removeItem(LS_KEY_CACHE);
-    clearPersistedQueue();
+    localStorage.removeItem(LS_ACTIVE_BOARD);
+    for (const b of boards) clearPersistedQueue(b.id);
     cryptoKey = null;
+    boards = [];
+    currentBoard = null;
     todos = [];
     pendingOps = [];
     el("settingsPanel").classList.remove("open");
