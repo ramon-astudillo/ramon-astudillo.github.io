@@ -579,13 +579,24 @@ function wireIconPicker(container, initialSelected) {
   return () => selected;
 }
 
+const expandedBoardIconPickers = new Set(); // board IDs whose icon picker is open (local UI state, not synced)
+
 function renderManageBoards() {
   const list = el("manageBoardsList");
   list.innerHTML = "";
   for (const b of boards) {
     const row = document.createElement("div");
     row.className = "manage-board-row";
-    row.innerHTML = CONFIG.ICONS[b.icon] || CONFIG.ICONS.list;
+
+    const iconBtn = document.createElement("button");
+    iconBtn.type = "button";
+    iconBtn.title = "Change icon";
+    iconBtn.style.cssText = "background:none; border:none; padding:2px; cursor:pointer; display:flex; color:var(--muted);";
+    iconBtn.innerHTML = CONFIG.ICONS[b.icon] || CONFIG.ICONS.list;
+    iconBtn.onclick = () => {
+      expandedBoardIconPickers.has(b.id) ? expandedBoardIconPickers.delete(b.id) : expandedBoardIconPickers.add(b.id);
+      renderManageBoards();
+    };
 
     const nameInput = document.createElement("input");
     nameInput.type = "text";
@@ -598,8 +609,23 @@ function renderManageBoards() {
     delBtn.textContent = "✕";
     delBtn.onclick = () => deleteBoard(b.id);
 
-    row.append(nameInput, delBtn);
+    row.append(iconBtn, nameInput, delBtn);
     list.appendChild(row);
+
+    if (expandedBoardIconPickers.has(b.id)) {
+      const picker = document.createElement("div");
+      picker.className = "icon-picker";
+      picker.style.marginLeft = "26px";
+      picker.innerHTML = iconPickerHtml(b.icon);
+      for (const btn of picker.querySelectorAll("button")) {
+        btn.onclick = () => {
+          expandedBoardIconPickers.delete(b.id);
+          renameBoard(b.id, b.label, btn.dataset.icon);
+          renderManageBoards();
+        };
+      }
+      list.appendChild(picker);
+    }
   }
 }
 
