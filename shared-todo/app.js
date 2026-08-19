@@ -591,7 +591,7 @@ function renderManageBoards() {
     const iconBtn = document.createElement("button");
     iconBtn.type = "button";
     iconBtn.title = "Change icon";
-    iconBtn.style.cssText = "background:none; border:none; padding:2px; cursor:pointer; display:flex; color:var(--muted);";
+    iconBtn.style.cssText = "background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:6px; cursor:pointer; display:flex; color:var(--muted);";
     iconBtn.innerHTML = CONFIG.ICONS[b.icon] || CONFIG.ICONS.list;
     iconBtn.onclick = () => {
       expandedBoardIconPickers.has(b.id) ? expandedBoardIconPickers.delete(b.id) : expandedBoardIconPickers.add(b.id);
@@ -1005,6 +1005,8 @@ async function tryStoredKey() {
 }
 
 function wireEvents() {
+  el("appVersionRow").textContent = "App version v" + CONFIG.APP_VERSION;
+
   el("connectBtn").onclick = () => DropboxAuth.startLogin();
 
   el("passphraseForm").onsubmit = (e) => {

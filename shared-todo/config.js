@@ -22,6 +22,11 @@ const CONFIG = {
 
   PBKDF2_ITERATIONS: 200000,
 
+  // Bump alongside sw.js's CACHE_NAME suffix on every deploy that changes
+  // app-shell files, so Settings can show which version a device is
+  // actually running (useful for confirming an update landed).
+  APP_VERSION: "12",
+
   // A small, generic, public icon set. Boards reference one of these keys
   // from the (private, encrypted) manifest — the icon glyphs themselves
   // carry no meaning about what any given board is used for.
