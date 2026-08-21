@@ -208,6 +208,13 @@
   .settings-sheet button.danger { color: var(--danger); border-color: var(--danger); }
   .settings-sheet .close-row { text-align: center; margin-top: 8px; }
   .settings-sheet .close-row button { background: none; border: none; color: var(--accent); font-size: 0.95rem; padding: 10px; }
+  .settings-sheet .advanced-settings summary {
+    cursor: pointer; padding: 12px 0; color: var(--muted); font-size: 0.9rem;
+    list-style: none; display: flex; justify-content: space-between; align-items: center;
+  }
+  .settings-sheet .advanced-settings summary::-webkit-details-marker { display: none; }
+  .settings-sheet .advanced-settings summary::after { content: "\25b8"; }
+  .settings-sheet .advanced-settings[open] summary::after { content: "\25be"; }
 
   .spinner {
     width: 18px; height: 18px; border: 2px solid var(--border); border-top-color: var(--accent);
@@ -275,10 +282,13 @@
   <div class="settings-panel" id="settingsPanel">
     <div class="settings-sheet">
       <h2>Settings</h2>
-      <div class="row"><span>Dropbox account</span><button class="secondary danger" id="disconnectBtn">Disconnect</button></div>
-      <div class="row"><span>Remembered passphrase</span><button class="secondary" id="forgetKeyBtn">Forget on this device</button></div>
       <div class="row"><span>Last synced</span><span id="settingsSyncTime">—</span></div>
       <div class="row"><span id="appVersionRow">App version</span><button class="secondary" id="forceUpdateBtn">Check for update</button></div>
+      <details class="advanced-settings">
+        <summary>Advanced</summary>
+        <div class="row"><span>Dropbox account</span><button class="secondary danger" id="disconnectBtn">Disconnect</button></div>
+        <div class="row"><span>Remembered passphrase</span><button class="secondary" id="forgetKeyBtn">Forget on this device</button></div>
+      </details>
       <h2 style="margin-top:16px;">Lists</h2>
       <div class="manage-boards-list" id="manageBoardsList"></div>
       <form class="add-board-form" id="addBoardForm">
