@@ -49,6 +49,7 @@ function clearPersistedQueue(boardId) {
 }
 const editingIds = new Set(); // todo/sub-todo IDs whose rename/date edit panel is open (local UI state, not synced; ids are UUIDs so one Set covers both levels)
 const shownChildrenIds = new Set(); // top-level todo IDs whose sub-todo list + add-sub-todo form is shown (local UI state, not synced)
+const noteAddMode = new Set(); // top-level todo IDs whose add-sub-item form is currently in "add note" mode (local UI state, not synced)
 
 const el = (id) => document.getElementById(id);
 
@@ -171,26 +172,31 @@ function renderRow(entity, { isSub, onToggle, onEditToggle, onRowClick, onDelete
   const wrap = document.createElement("div");
   wrap.className = "swipe-wrap";
 
+  const isNote = entity.type === "note";
   const row = document.createElement("div");
-  row.className = "todo-item" + (isSub ? " sub-item" : "");
+  row.className = "todo-item" + (isSub ? " sub-item" : "") + (isNote ? " note-item" : "");
 
-  const check = document.createElement("button");
-  check.className = "todo-check" + (isSub ? " sub-check" : "") + (entity.done ? " done" : "");
-  check.innerHTML = '<svg viewBox="0 0 24 24" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
-  check.onclick = (e) => { e.stopPropagation(); onToggle(); };
+  if (!isNote) {
+    const check = document.createElement("button");
+    check.className = "todo-check" + (isSub ? " sub-check" : "") + (entity.done ? " done" : "");
+    check.innerHTML = '<svg viewBox="0 0 24 24" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+    check.onclick = (e) => { e.stopPropagation(); onToggle(); };
+    row.appendChild(check);
+  }
 
   const text = document.createElement("span");
-  text.className = "todo-text" + (entity.done ? " done" : "");
+  text.className = "todo-text" + (entity.done ? " done" : "") + (entity.bold ? " bold" : "");
   text.textContent = entity.text;
 
-  row.append(check, text);
+  row.appendChild(text);
 
   const children = entity.children || [];
-  if (!isSub && children.length > 0) {
-    const doneCount = children.filter((c) => c.done).length;
+  const checkableChildren = children.filter((c) => c.type !== "note");
+  if (!isSub && checkableChildren.length > 0) {
+    const doneCount = checkableChildren.filter((c) => c.done).length;
     const countSpan = document.createElement("span");
     countSpan.className = "todo-subcount";
-    countSpan.textContent = "(" + doneCount + "/" + children.length + ")";
+    countSpan.textContent = "(" + doneCount + "/" + checkableChildren.length + ")";
     row.appendChild(countSpan);
   }
 
@@ -258,6 +264,47 @@ function renderEditForm(entity, onSave, onCancel) {
   return form;
 }
 
+// Edit form for note-type sub-items: just text + a bold toggle, no
+// checkbox/date fields since notes are never "done" or due.
+function renderNoteEditForm(entity, onSave, onCancel) {
+  const form = document.createElement("form");
+  form.className = "edit-form";
+
+  const textInput = document.createElement("input");
+  textInput.type = "text";
+  textInput.className = "edit-text";
+  textInput.value = entity.text;
+  textInput.required = true;
+
+  let bold = !!entity.bold;
+  const boldBtn = document.createElement("button");
+  boldBtn.type = "button";
+  boldBtn.className = "bold-toggle-btn" + (bold ? " active" : "");
+  boldBtn.textContent = "B";
+  boldBtn.title = "Bold (for section separators)";
+  boldBtn.onclick = () => {
+    bold = !bold;
+    boldBtn.classList.toggle("active", bold);
+  };
+
+  const saveBtn = document.createElement("button");
+  saveBtn.type = "submit";
+  saveBtn.textContent = "Save";
+
+  const cancelBtn = document.createElement("button");
+  cancelBtn.type = "button";
+  cancelBtn.className = "cancel-btn";
+  cancelBtn.textContent = "Cancel";
+  cancelBtn.onclick = onCancel;
+
+  form.append(textInput, boldBtn, saveBtn, cancelBtn);
+  form.onsubmit = (e) => {
+    e.preventDefault();
+    onSave({ text: textInput.value, bold });
+  };
+  return form;
+}
+
 function renderTodoItem(todo) {
   const wrap = document.createElement("li");
   wrap.className = "todo-item-wrap";
@@ -312,11 +359,19 @@ function renderChildrenSection(todo) {
       if (editingIds.has(child.id)) {
         const panel = document.createElement("div");
         panel.className = "todo-expand";
-        panel.appendChild(renderEditForm(
-          child,
-          (patch) => { editSubTodo(todo.id, child.id, patch); editingIds.delete(child.id); render(); },
-          () => { editingIds.delete(child.id); render(); }
-        ));
+        panel.appendChild(
+          child.type === "note"
+            ? renderNoteEditForm(
+                child,
+                (patch) => { editSubNote(todo.id, child.id, patch); editingIds.delete(child.id); render(); },
+                () => { editingIds.delete(child.id); render(); }
+              )
+            : renderEditForm(
+                child,
+                (patch) => { editSubTodo(todo.id, child.id, patch); editingIds.delete(child.id); render(); },
+                () => { editingIds.delete(child.id); render(); }
+              )
+        );
         li.appendChild(panel);
       }
 
@@ -327,16 +382,28 @@ function renderChildrenSection(todo) {
 
   const addForm = document.createElement("form");
   addForm.className = "sub-add-row";
+
+  const noteModeBtn = document.createElement("button");
+  noteModeBtn.type = "button";
+  noteModeBtn.className = "note-mode-btn" + (noteAddMode.has(todo.id) ? " active" : "");
+  noteModeBtn.title = "Add a note instead of a checklist item";
+  noteModeBtn.textContent = "N";
+  noteModeBtn.onclick = () => {
+    noteAddMode.has(todo.id) ? noteAddMode.delete(todo.id) : noteAddMode.add(todo.id);
+    render();
+  };
+
   const addInput = document.createElement("input");
   addInput.type = "text";
-  addInput.placeholder = "Add a sub-item...";
+  addInput.placeholder = noteAddMode.has(todo.id) ? "Add a note..." : "Add a sub-item...";
   addInput.autocomplete = "off";
   addForm.onsubmit = (e) => {
     e.preventDefault();
-    addSubTodo(todo.id, addInput.value);
+    if (noteAddMode.has(todo.id)) addSubNote(todo.id, addInput.value);
+    else addSubTodo(todo.id, addInput.value);
     addInput.value = "";
   };
-  addForm.appendChild(addInput);
+  addForm.append(noteModeBtn, addInput);
   section.appendChild(addForm);
 
   return section;
@@ -742,6 +809,7 @@ function applyOp(list, op) {
       const child = parent && parent.children && parent.children.find((c) => c.id === op.childId);
       if (!child) break;
       child.text = op.patch.text;
+      if (op.patch.bold !== undefined) child.bold = op.patch.bold;
       if (op.patch.due_date) {
         child.due_date = op.patch.due_date;
         if (op.patch.due_time) child.due_time = op.patch.due_time; else delete child.due_time;
@@ -902,6 +970,16 @@ function toggleSubTodo(parentId, childId) {
   applyEdit({ type: "toggleSub", parentId, childId, now: new Date().toISOString() });
 }
 
+// Note sub-items are plain text (no checkbox, no due date) used as
+// separators/remarks; they reuse the "addSub"/"editSub" op types via a
+// `type: "note"` tag on the child object, so no sync/op-log changes needed.
+function addSubNote(parentId, text) {
+  const trimmed = text.trim();
+  if (!trimmed) return;
+  const now = new Date().toISOString();
+  applyEdit({ type: "addSub", parentId, now, todo: { id: crypto.randomUUID(), type: "note", text: trimmed, bold: false, created_at: now, updated_at: now } });
+}
+
 function deleteSubTodo(parentId, childId) {
   applyEdit({ type: "deleteSub", parentId, childId, now: new Date().toISOString() });
 }
@@ -918,6 +996,12 @@ function editSubTodo(parentId, childId, patch) {
   const trimmed = (patch.text || "").trim();
   if (!trimmed) return;
   applyEdit({ type: "editSub", parentId, childId, now: new Date().toISOString(), patch: { text: trimmed, due_date: patch.due_date, due_time: patch.due_time } });
+}
+
+function editSubNote(parentId, childId, patch) {
+  const trimmed = (patch.text || "").trim();
+  if (!trimmed) return;
+  applyEdit({ type: "editSub", parentId, childId, now: new Date().toISOString(), patch: { text: trimmed, bold: !!patch.bold } });
 }
 
 // Deletes immediately (swipe has no separate confirm step) but snapshots the

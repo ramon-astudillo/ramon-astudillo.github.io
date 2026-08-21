@@ -107,6 +107,8 @@
   .todo-check.done svg { visibility: visible; }
   .todo-text { flex: 1; font-size: 1rem; word-break: break-word; }
   .todo-text.done { text-decoration: line-through; color: var(--done); }
+  .todo-text.bold { font-weight: 700; }
+  .note-item { background: var(--bg); }
   .todo-subcount { font-size: 0.8rem; color: var(--muted); white-space: nowrap; }
   .todo-days { font-size: 0.8rem; color: var(--muted); white-space: nowrap; }
   .todo-days.today { color: var(--accent); font-weight: 600; }
@@ -134,6 +136,11 @@
     background: none; border: 1px solid var(--border); border-radius: 8px;
     padding: 8px 14px; font-size: 0.85rem; cursor: pointer; color: var(--muted);
   }
+  .bold-toggle-btn {
+    background: none; border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 14px; font-size: 0.85rem; font-weight: 700; cursor: pointer; color: var(--muted);
+  }
+  .bold-toggle-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
   .children-section { margin-top: 4px; }
   .sub-list {
     list-style: none; margin: 4px 0 0 30px; padding: 2px 0 2px 12px;
@@ -143,8 +150,13 @@
   .sub-item { padding: 10px 12px; }
   .sub-check { width: 20px; height: 20px; min-width: 20px; }
   .sub-check svg { width: 12px; height: 12px; }
-  .sub-add-row { padding: 6px 0 6px 30px; display: flex; }
+  .sub-add-row { padding: 6px 0 6px 30px; display: flex; gap: 6px; }
   .sub-add-row input { flex: 1; padding: 8px 10px; font-size: 0.85rem; border-radius: 8px; }
+  .note-mode-btn {
+    background: none; border: 1px solid var(--border); border-radius: 8px;
+    min-width: 34px; font-size: 0.85rem; font-weight: 700; cursor: pointer; color: var(--muted);
+  }
+  .note-mode-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
   .empty-state { color: var(--muted); text-align: center; padding: 40px 16px; font-size: 0.95rem; }
 
   .add-bar {
