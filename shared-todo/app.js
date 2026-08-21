@@ -347,7 +347,7 @@ function renderChildrenSection(todo) {
 
     for (const child of children) {
       const li = document.createElement("li");
-      li.className = "sub-item-wrap";
+      li.className = "sub-item-wrap" + (child.type === "note" ? " note-item-wrap" : "");
 
       li.appendChild(renderRow(child, {
         isSub: true,
