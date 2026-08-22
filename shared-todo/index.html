@@ -218,6 +218,11 @@
   .settings-sheet .advanced-settings summary::-webkit-details-marker { display: none; }
   .settings-sheet .advanced-settings summary::after { content: "\25b8"; }
   .settings-sheet .advanced-settings[open] summary::after { content: "\25be"; }
+  .settings-sheet .row input[type=text] {
+    padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border);
+    font-size: 0.85rem; width: 120px; background: var(--card); color: var(--text);
+  }
+  .settings-sheet .row .row-actions { display: flex; gap: 6px; }
 
   .spinner {
     width: 18px; height: 18px; border: 2px solid var(--border); border-top-color: var(--accent);
@@ -285,6 +290,13 @@
   <div class="settings-panel" id="settingsPanel">
     <div class="settings-sheet">
       <h2>Settings</h2>
+      <form class="row" id="userNameForm">
+        <span>Your name</span>
+        <span class="row-actions">
+          <input type="text" id="userNameInput" placeholder="Optional" autocomplete="off">
+          <button class="secondary" type="submit">Save</button>
+        </span>
+      </form>
       <div class="row"><span>Last synced</span><span id="settingsSyncTime">—</span></div>
       <div class="row"><span id="appVersionRow">App version</span><button class="secondary" id="forceUpdateBtn">Check for update</button></div>
       <details class="advanced-settings">

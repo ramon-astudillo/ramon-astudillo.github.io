@@ -4,8 +4,26 @@ const LS_KEY_CACHE = "shared_todo_key_cache";
 const LS_ACTIVE_BOARD = "shared_todo_active_board"; // last-viewed board id, per device
 const LEGACY_TODO_PATH = "/todos.json"; // pre-multi-board data file, migrated into the manifest on first run
 
+// Per-device identity, used later for task assignment. Generated silently on
+// first run — no onboarding prompt — so it costs zero friction; a display
+// name is opt-in via Settings. Since every device shares one Dropbox
+// account/app folder (see docs/spec.md), this id is really "this device",
+// not "this person" — the same person on two devices gets two ids. Fine for
+// now; can be reconciled later if it matters.
+const LS_DEVICE_ID = "shared_todo_device_id";
+function ensureDeviceId() {
+  let id = localStorage.getItem(LS_DEVICE_ID);
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem(LS_DEVICE_ID, id);
+  }
+  return id;
+}
+const deviceId = ensureDeviceId();
+
 let cryptoKey = null;   // CryptoKey, derived from the passphrase
 let boards = [];        // [{ id, label, icon, file }], from the decrypted manifest
+let users = [];         // [{ id, name, created_at }], from the decrypted manifest — one entry per device seen
 let manifestUpdatedAt = null;
 let currentBoard = null; // the board object currently shown
 let todos = [];         // in-memory list, includes any not-yet-synced optimistic edits
@@ -535,7 +553,7 @@ async function fetchRemoteDoc() {
 // inside this encrypted file — never in the (public) committed code.
 
 function emptyManifest() {
-  return { version: 1, updated_at: null, boards: [] };
+  return { version: 1, updated_at: null, boards: [], users: [] };
 }
 
 async function fetchManifest() {
@@ -553,7 +571,7 @@ const LS_MANIFEST_CACHE = "shared_todo_manifest_cache";
 
 function persistManifestCache() {
   try {
-    localStorage.setItem(LS_MANIFEST_CACHE, JSON.stringify({ boards, updated_at: manifestUpdatedAt }));
+    localStorage.setItem(LS_MANIFEST_CACHE, JSON.stringify({ boards, users, updated_at: manifestUpdatedAt }));
   } catch (err) {
     console.error(err);
   }
@@ -575,6 +593,7 @@ async function saveManifest(manifest) {
   await DropboxFile.upload(CONFIG.BOARDS_MANIFEST_PATH, text);
   manifestUpdatedAt = manifest.updated_at;
   boards = manifest.boards;
+  users = manifest.users || [];
   persistManifestCache();
 }
 
@@ -593,6 +612,7 @@ async function ensureManifest(allowOfflineFallback) {
     const cached = loadManifestCache();
     if (!cached) throw err;
     boards = cached.boards;
+    users = cached.users || [];
     manifestUpdatedAt = cached.updated_at;
     return;
   }
@@ -600,7 +620,16 @@ async function ensureManifest(allowOfflineFallback) {
   if (manifest) {
     manifestUpdatedAt = manifest.updated_at;
     boards = manifest.boards;
+    users = manifest.users || [];
     persistManifestCache();
+    // Silently register this device the first time its id is seen, so a
+    // roster of known devices builds up automatically just from opening the
+    // app — no separate sign-up step (see deviceId above).
+    if (!users.some((u) => u.id === deviceId)) {
+      manifest.users = users;
+      manifest.users.push({ id: deviceId, name: null, created_at: new Date().toISOString() });
+      await saveManifest(manifest);
+    }
     return;
   }
 
@@ -612,6 +641,7 @@ async function ensureManifest(allowOfflineFallback) {
     icon: "list",
     file: legacyText !== null ? LEGACY_TODO_PATH : "/board-1.json",
   });
+  manifest.users.push({ id: deviceId, name: null, created_at: new Date().toISOString() });
   await saveManifest(manifest);
 }
 
@@ -749,6 +779,24 @@ async function renameBoard(id, label, icon) {
     el("headerTitle").textContent = trimmed;
   }
   renderTabs();
+}
+
+// Sets (or clears) this device's display name in the shared manifest. The
+// device is normally already registered by ensureManifest on load; a
+// from-scratch manifest.users entry is created here too just in case this
+// runs before that's happened (e.g. a retried save after a failed load).
+async function setMyName(name) {
+  const trimmed = name.trim();
+  const manifest = await fetchManifest() || emptyManifest();
+  if (!manifest.users) manifest.users = [];
+  let me = manifest.users.find((u) => u.id === deviceId);
+  if (!me) {
+    me = { id: deviceId, name: null, created_at: new Date().toISOString() };
+    manifest.users.push(me);
+  }
+  me.name = trimmed || null;
+  await saveManifest(manifest);
+  toast(trimmed ? "Name saved." : "Name cleared.");
 }
 
 async function deleteBoard(id) {
@@ -1179,7 +1227,14 @@ function wireEvents() {
     renderManageBoards();
     el("addBoardName").value = "";
     getAddBoardIcon = wireIconPicker(el("addBoardIconPicker"), "list");
+    const me = users.find((u) => u.id === deviceId);
+    el("userNameInput").value = (me && me.name) || "";
     el("settingsPanel").classList.add("open");
+  };
+
+  el("userNameForm").onsubmit = (e) => {
+    e.preventDefault();
+    setMyName(el("userNameInput").value);
   };
   el("closeSettingsBtn").onclick = () => el("settingsPanel").classList.remove("open");
   el("settingsPanel").onclick = (e) => {
