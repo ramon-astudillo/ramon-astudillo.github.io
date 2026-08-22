@@ -305,9 +305,36 @@ function renderNoteEditForm(entity, onSave, onCancel) {
   return form;
 }
 
+// The "add a super-item" input shown above a top-level row when it's
+// expanded, mirroring renderChildrenSection's add-sub-item form below it.
+// Submitting wraps `todo` in a brand-new parent via promoteToSuper.
+function renderParentSection(todo) {
+  const section = document.createElement("div");
+  section.className = "parent-section";
+
+  const addForm = document.createElement("form");
+  addForm.className = "super-add-row";
+
+  const addInput = document.createElement("input");
+  addInput.type = "text";
+  addInput.placeholder = "Add a super-item...";
+  addInput.autocomplete = "off";
+  addForm.onsubmit = (e) => {
+    e.preventDefault();
+    promoteToSuper(todo.id, addInput.value);
+    addInput.value = "";
+  };
+  addForm.appendChild(addInput);
+  section.appendChild(addForm);
+
+  return section;
+}
+
 function renderTodoItem(todo) {
   const wrap = document.createElement("li");
   wrap.className = "todo-item-wrap";
+
+  if (shownChildrenIds.has(todo.id)) wrap.appendChild(renderParentSection(todo));
 
   wrap.appendChild(renderRow(todo, {
     isSub: false,
@@ -821,6 +848,15 @@ function applyOp(list, op) {
       parent.updated_at = op.now;
       break;
     }
+    case "wrapSuper": {
+      const idx = list.findIndex((x) => x.id === op.id);
+      if (idx === -1) break; // item was deleted/moved elsewhere before this op replayed
+      const child = list[idx];
+      delete child.children; // depth is capped at 2 — the demoted item can't keep its own sub-items
+      child.updated_at = op.now;
+      list[idx] = { ...op.newParent, children: [child] };
+      break;
+    }
   }
 }
 
@@ -964,6 +1000,30 @@ function addSubTodo(parentId, text) {
   if (!trimmed) return;
   const now = new Date().toISOString();
   applyEdit({ type: "addSub", parentId, now, todo: { id: crypto.randomUUID(), text: trimmed, done: false, created_at: now, updated_at: now } });
+}
+
+// Wraps a top-level todo in a brand-new parent todo, demoting the original
+// to that parent's sole child. Depth is capped at 2 (children never have
+// children of their own), so if the item being wrapped already has
+// sub-items, those get dropped — confirm with the user before doing that.
+function promoteToSuper(id, text) {
+  const trimmed = text.trim();
+  if (!trimmed) return;
+  const todo = todos.find((t) => t.id === id);
+  if (!todo) return;
+  if (todo.children && todo.children.length > 0) {
+    const ok = confirm(
+      "This item has " + todo.children.length + " sub-item(s). Making it a sub-item of a new item will remove them, since items can only be nested one level deep. Continue?"
+    );
+    if (!ok) return;
+  }
+  const now = new Date().toISOString();
+  applyEdit({
+    type: "wrapSuper",
+    id,
+    now,
+    newParent: { id: crypto.randomUUID(), text: trimmed, done: false, created_at: now, updated_at: now },
+  });
 }
 
 function toggleSubTodo(parentId, childId) {
