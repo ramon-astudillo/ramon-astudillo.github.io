@@ -1481,6 +1481,7 @@ function wireEvents() {
     const me = users.find((u) => u.id === deviceId);
     el("userNameInput").value = (me && me.name) || "";
     el("settingsPanel").classList.add("open");
+    refreshUpdateButtonLabel();
   };
 
   el("userNameForm").onsubmit = (e) => {
@@ -1524,6 +1525,30 @@ function wireEvents() {
   el("forceUpdateBtn").onclick = () => forceUpdate();
 
   el("loadingRetryBtn").onclick = () => tryStoredKey();
+}
+
+// APP_VERSION is only bumped on deploys that also change the shell cache
+// name (see the comment on APP_VERSION in config.js) — plenty of smaller
+// fixes ship without a bump, so a version number match here doesn't
+// guarantee this device is byte-for-byte current, only that no
+// cache-invalidating deploy has landed since. Fetched with cache: "no-store"
+// so this check itself isn't answered by the very service-worker cache
+// it's trying to detect staleness of.
+async function refreshUpdateButtonLabel() {
+  const btn = el("forceUpdateBtn");
+  if (btn.disabled) return; // an update is already in progress
+  try {
+    const res = await fetch("config.js?_=" + Date.now(), { cache: "no-store" });
+    const text = await res.text();
+    const match = text.match(/APP_VERSION:\s*"([^"]+)"/);
+    if (match && match[1] !== CONFIG.APP_VERSION) {
+      btn.textContent = "Update to v" + match[1];
+      return;
+    }
+  } catch (err) {
+    console.error(err); // offline or unreachable — leave the default label
+  }
+  btn.textContent = "Check for update";
 }
 
 // Unregisters the service worker and clears its caches, then reloads —
