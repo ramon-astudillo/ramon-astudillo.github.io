@@ -197,7 +197,9 @@ function renderDaysBadge(entity) {
   if (!entity.due_date) return null;
   const { text, cls } = daysLeftLabel(entity.due_date, entity.due_time);
   const span = document.createElement("span");
-  span.className = "todo-days" + (cls ? " " + cls : "");
+  // Done items keep showing their date but drop the today/overdue urgency
+  // styling — a checked-off item being "overdue" isn't meaningful.
+  span.className = "todo-days" + (cls && !entity.done ? " " + cls : "");
   span.textContent = text;
   return span;
 }
