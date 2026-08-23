@@ -1440,10 +1440,26 @@ function wireEvents() {
     addInput.placeholder = addIsNote ? "Add a note..." : "Add an item...";
   };
 
-  el("addForm").onsubmit = (e) => {
-    e.preventDefault();
+  const submitAdd = () => {
     addTodo(addInput.value, addIsNote);
     addInput.value = "";
+  };
+  // Enter used to implicitly submit this form back when it held a single
+  // text field and a type="submit" button. Now that the "N" toggle button
+  // also lives in the form, browsers no longer treat Enter as a submit
+  // trigger (a <button> in a form suppresses that fallback) — handle Enter
+  // directly instead of depending on it. addTodo's own trim-check makes
+  // this safe to also leave wired to onsubmit for any path that does still
+  // fire native submission (e.g. an on-screen keyboard's "Go" action): a
+  // second call lands on an already-cleared input and no-ops.
+  addInput.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    submitAdd();
+  });
+  el("addForm").onsubmit = (e) => {
+    e.preventDefault();
+    submitAdd();
   };
 
   el("refreshBtn").onclick = () => {
