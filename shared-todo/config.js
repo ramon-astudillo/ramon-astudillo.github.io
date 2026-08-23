@@ -25,7 +25,7 @@ const CONFIG = {
   // Bump alongside sw.js's CACHE_NAME suffix on every deploy that changes
   // app-shell files, so Settings can show which version a device is
   // actually running (useful for confirming an update landed).
-  APP_VERSION: "20",
+  APP_VERSION: "21",
 
   // A small, generic, public icon set. Boards reference one of these keys
   // from the (private, encrypted) manifest — the icon glyphs themselves
