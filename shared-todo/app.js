@@ -129,13 +129,16 @@ function setSyncState(state) {
   }
 }
 
+// `todos` array order is the source of truth for display order (drag-to-
+// reorder mutates it directly via the "reorder" op) — no separate sort here.
+// This was already true in effect before reordering existed, since "add"
+// only ever pushed to the end, so this changes nothing for existing data.
 function render() {
   const list = el("todoList");
   list.innerHTML = "";
-  const sorted = [...todos].sort((a, b) => a.created_at.localeCompare(b.created_at));
-  for (const todo of sorted) list.appendChild(renderTodoItem(todo));
+  for (const todo of todos) list.appendChild(renderTodoItem(todo));
   el("todoList").hidden = false;
-  el("emptyState").hidden = sorted.length !== 0;
+  el("emptyState").hidden = todos.length !== 0;
 }
 
 function formatDuration(mins) {
@@ -180,12 +183,17 @@ function renderDaysBadge(entity) {
 }
 
 const EDIT_PENCIL_SVG = '<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>';
+const DRAG_HANDLE_SVG = '<svg viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.5"></circle><circle cx="15" cy="6" r="1.5"></circle><circle cx="9" cy="12" r="1.5"></circle><circle cx="15" cy="12" r="1.5"></circle><circle cx="9" cy="18" r="1.5"></circle><circle cx="15" cy="18" r="1.5"></circle></svg>';
 
-// Builds the swipeable row (radio + text + days badge + edit icon) shared by
-// top-level todos and sub-todos. The edit icon always toggles the rename/date
-// panel; `onRowClick` (top-level only) toggles the sub-todo list separately —
-// the two are independent so opening one doesn't force the other open too.
-// Swiping left past a threshold deletes the row (see attachSwipeToDelete).
+// Builds the swipeable row (drag handle + radio + text + days badge + edit
+// icon) shared by top-level todos and sub-todos. The edit icon always
+// toggles the rename/date panel; `onRowClick` (top-level only) toggles the
+// sub-todo list separately — the two are independent so opening one doesn't
+// force the other open too. Swiping left past a threshold deletes the row
+// (see attachSwipeToDelete). Returns { el, handle } rather than just the row
+// element so callers can wire the handle to attachDragReorder against the
+// outer <li>, which drag needs to translate as a whole (see renderTodoItem /
+// renderChildrenSection).
 function renderRow(entity, { isSub, onToggle, onEditToggle, onRowClick, onDelete }) {
   const wrap = document.createElement("div");
   wrap.className = "swipe-wrap";
@@ -193,6 +201,17 @@ function renderRow(entity, { isSub, onToggle, onEditToggle, onRowClick, onDelete
   const isNote = entity.type === "note";
   const row = document.createElement("div");
   row.className = "todo-item" + (isSub ? " sub-item" : "") + (isNote ? " note-item" : "");
+
+  const handle = document.createElement("button");
+  handle.type = "button";
+  handle.className = "drag-handle";
+  handle.title = "Drag to reorder";
+  handle.innerHTML = DRAG_HANDLE_SVG;
+  // Dragging starts from the handle only, never the row, so it never fights
+  // the row's horizontal swipe-to-delete gesture or the page's vertical
+  // scroll — see attachDragReorder.
+  handle.onclick = (e) => e.stopPropagation();
+  row.appendChild(handle);
 
   if (!isNote) {
     const check = document.createElement("button");
@@ -233,7 +252,7 @@ function renderRow(entity, { isSub, onToggle, onEditToggle, onRowClick, onDelete
 
   wrap.appendChild(row);
   attachSwipeToDelete(row, onDelete);
-  return wrap;
+  return { el: wrap, handle };
 }
 
 // Shared rename + due-date/time form used by both top-level todos and
@@ -354,13 +373,15 @@ function renderTodoItem(todo) {
 
   if (shownChildrenIds.has(todo.id)) wrap.appendChild(renderParentSection(todo));
 
-  wrap.appendChild(renderRow(todo, {
+  const { el: rowEl, handle } = renderRow(todo, {
     isSub: false,
     onToggle: () => toggleTodo(todo.id),
     onEditToggle: () => { editingIds.has(todo.id) ? editingIds.delete(todo.id) : editingIds.add(todo.id); render(); },
     onRowClick: () => { shownChildrenIds.has(todo.id) ? shownChildrenIds.delete(todo.id) : shownChildrenIds.add(todo.id); render(); },
     onDelete: () => deleteTodoWithUndo(todo.id),
-  }));
+  });
+  wrap.appendChild(rowEl);
+  attachDragReorder(handle, wrap, () => Array.from(el("todoList").children), (fromIndex, toIndex) => reorderTodo(todo.id, toIndex));
 
   if (editingIds.has(todo.id)) {
     const panel = document.createElement("div");
@@ -394,12 +415,14 @@ function renderChildrenSection(todo) {
       const li = document.createElement("li");
       li.className = "sub-item-wrap" + (child.type === "note" ? " note-item-wrap" : "");
 
-      li.appendChild(renderRow(child, {
+      const { el: childRowEl, handle: childHandle } = renderRow(child, {
         isSub: true,
         onToggle: () => toggleSubTodo(todo.id, child.id),
         onEditToggle: () => { editingIds.has(child.id) ? editingIds.delete(child.id) : editingIds.add(child.id); render(); },
         onDelete: () => deleteSubTodoWithUndo(todo.id, child.id),
-      }));
+      });
+      li.appendChild(childRowEl);
+      attachDragReorder(childHandle, li, () => Array.from(ul.children), (fromIndex, toIndex) => reorderSubTodo(todo.id, child.id, toIndex));
 
       if (editingIds.has(child.id)) {
         const panel = document.createElement("div");
@@ -521,6 +544,82 @@ function attachSwipeToDelete(rowEl, onDelete) {
 
   rowEl.addEventListener("pointerup", finish);
   rowEl.addEventListener("pointercancel", finish);
+}
+
+// Vertical drag-to-reorder, started only from a dedicated handle (never the
+// row itself) so it never has to be disambiguated from the row's horizontal
+// swipe-to-delete gesture or from the page's normal vertical scroll — the
+// handle has touch-action:none and simply always drags.
+//
+// `wrapEl` is the outer <li> (todo-item-wrap or sub-item-wrap), which is
+// translated as a whole so any open edit panel / children section moves with
+// it. `getSiblingWraps()` is called at drag-start and must return the
+// current siblings (same list: all top-level <li>s, or one parent's sub
+// <li>s) in DOM order — which matches the underlying array order, since
+// render() no longer re-sorts. `onDrop(fromIndex, toIndex)` fires once, on
+// release, with indices into that same array; the caller applies the
+// reorder to its data and re-renders (render() resets all transforms).
+//
+// Sibling shift amounts during the drag use the dragged row's own height as
+// a stand-in for every sibling's height. Rows at the same level are close
+// enough in height that this reads fine in practice; exact per-sibling
+// offsets would need re-measuring every sibling on each move, which isn't
+// worth it for a todo list.
+function attachDragReorder(handleEl, wrapEl, getSiblingWraps, onDrop) {
+  let dragging = false;
+  let startY = 0;
+  let siblings = []; // [{ el, top }], captured at drag start, in original DOM order
+  let currentIndex = 0;
+  let dropIndex = 0;
+  let rowHeight = 0;
+
+  handleEl.addEventListener("pointerdown", (e) => {
+    if (e.button !== undefined && e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    handleEl.setPointerCapture(e.pointerId);
+    dragging = true;
+    startY = e.clientY;
+    const wraps = getSiblingWraps();
+    siblings = wraps.map((el) => ({ el, top: el.offsetTop }));
+    currentIndex = wraps.indexOf(wrapEl);
+    dropIndex = currentIndex;
+    rowHeight = wrapEl.offsetHeight;
+    wrapEl.classList.add("drag-active");
+  });
+
+  handleEl.addEventListener("pointermove", (e) => {
+    if (!dragging) return;
+    e.stopPropagation();
+    const dy = e.clientY - startY;
+    wrapEl.style.transform = "translateY(" + dy + "px)";
+
+    const draggedCenter = siblings[currentIndex].top + rowHeight / 2 + dy;
+    const others = siblings.filter((_, i) => i !== currentIndex);
+    let k = others.findIndex((s) => draggedCenter < s.top + rowHeight / 2);
+    if (k === -1) k = others.length;
+    dropIndex = k;
+
+    others.forEach((s, i) => {
+      const originalIndex = siblings.indexOf(s);
+      const newIndex = i < k ? i : i + 1;
+      const shift = (newIndex - originalIndex) * rowHeight;
+      s.el.style.transform = shift ? "translateY(" + shift + "px)" : "";
+    });
+  });
+
+  const finish = (e) => {
+    if (!dragging) return;
+    dragging = false;
+    e.stopPropagation();
+    wrapEl.classList.remove("drag-active");
+    wrapEl.style.transform = "";
+    for (const s of siblings) s.el.style.transform = "";
+    if (dropIndex !== currentIndex) onDrop(currentIndex, dropIndex);
+  };
+
+  handleEl.addEventListener("pointerup", finish);
+  handleEl.addEventListener("pointercancel", finish);
 }
 
 // updated_at is null here (not a fresh timestamp) so repeated calls before
@@ -896,6 +995,23 @@ function applyOp(list, op) {
       parent.updated_at = op.now;
       break;
     }
+    case "reorder": {
+      const idx = list.findIndex((x) => x.id === op.id);
+      if (idx === -1) break;
+      const [item] = list.splice(idx, 1);
+      list.splice(Math.min(op.toIndex, list.length), 0, item);
+      break;
+    }
+    case "reorderSub": {
+      const parent = list.find((x) => x.id === op.parentId);
+      if (!parent || !parent.children) break;
+      const idx = parent.children.findIndex((c) => c.id === op.childId);
+      if (idx === -1) break;
+      const [item] = parent.children.splice(idx, 1);
+      parent.children.splice(Math.min(op.toIndex, parent.children.length), 0, item);
+      parent.updated_at = op.now;
+      break;
+    }
     case "wrapSuper": {
       const idx = list.findIndex((x) => x.id === op.id);
       if (idx === -1) break; // item was deleted/moved elsewhere before this op replayed
@@ -1076,6 +1192,17 @@ function promoteToSuper(id, text) {
 
 function toggleSubTodo(parentId, childId) {
   applyEdit({ type: "toggleSub", parentId, childId, now: new Date().toISOString() });
+}
+
+// `toIndex` is a target index within the array *after* the moved item is
+// removed from it (see attachDragReorder's dropIndex, and applyOp's splice
+// pair above) — not its final resting index in some other frame.
+function reorderTodo(id, toIndex) {
+  applyEdit({ type: "reorder", id, toIndex });
+}
+
+function reorderSubTodo(parentId, childId, toIndex) {
+  applyEdit({ type: "reorderSub", parentId, childId, toIndex, now: new Date().toISOString() });
 }
 
 // Note sub-items are plain text (no checkbox, no due date) used as

@@ -86,7 +86,8 @@
   }
 
   .todo-list { list-style: none; margin: 8px 0; padding: 0; }
-  .todo-item-wrap { margin-bottom: 8px; }
+  .todo-item-wrap { margin-bottom: 8px; position: relative; transition: transform 0.15s ease; }
+  .todo-item-wrap.drag-active { transition: none; z-index: 10; }
   .swipe-wrap { overflow: hidden; border-radius: 12px; }
   .todo-item {
     display: flex; align-items: center; gap: 12px;
@@ -97,6 +98,16 @@
   }
   .todo-item.dragging { transition: none; }
   .todo-item.no-row-click { cursor: default; }
+  .drag-handle {
+    background: none; border: none; color: var(--muted); padding: 2px;
+    cursor: grab; display: flex; align-items: center; justify-content: center;
+    touch-action: none; min-width: 20px; flex: none;
+  }
+  .drag-handle svg { width: 16px; height: 16px; fill: currentColor; }
+  .drag-handle:active { cursor: grabbing; color: var(--accent); }
+  .todo-item-wrap.drag-active .todo-item, .sub-item-wrap.drag-active .todo-item {
+    box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+  }
   .todo-check {
     width: 26px; height: 26px; min-width: 26px; border-radius: 50%;
     border: 2px solid var(--accent); background: none; cursor: pointer; padding: 0;
@@ -146,7 +157,8 @@
     list-style: none; margin: 4px 0 0 30px; padding: 2px 0 2px 12px;
     border-left: 2px solid var(--border);
   }
-  .sub-item-wrap { margin-bottom: 6px; }
+  .sub-item-wrap { margin-bottom: 6px; position: relative; transition: transform 0.15s ease; }
+  .sub-item-wrap.drag-active { transition: none; z-index: 10; }
   .note-item-wrap { margin-bottom: 2px; }
   .sub-item { padding: 10px 12px; }
   .note-item { padding: 4px 12px; }
