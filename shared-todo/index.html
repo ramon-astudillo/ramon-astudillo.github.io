@@ -216,10 +216,7 @@
   }
   .add-bar form { display: flex; gap: 8px; width: 100%; max-width: 560px; }
   .add-bar input { flex: 1; }
-  .add-bar button {
-    background: var(--accent); color: white; border: none; border-radius: 10px;
-    width: 48px; font-size: 1.4rem; cursor: pointer;
-  }
+  .add-bar .note-mode-btn { min-width: 44px; }
 
   .toast {
     position: fixed; bottom: 76px; left: 50%; transform: translateX(-50%);
@@ -335,8 +332,8 @@
 
   <div class="add-bar" id="addBar" hidden>
     <form id="addForm">
+      <button type="button" id="addNoteModeBtn" class="note-mode-btn" title="Add a note instead of a checklist item">N</button>
       <input type="text" id="addInput" placeholder="Add an item..." autocomplete="off">
-      <button type="submit">+</button>
     </form>
   </div>
 

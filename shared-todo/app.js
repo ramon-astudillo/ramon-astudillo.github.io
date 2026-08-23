@@ -457,10 +457,8 @@ function renderTodoItem(todo) {
   if (editingIds.has(todo.id)) {
     const panel = document.createElement("div");
     panel.className = "todo-expand";
-    panel.appendChild(renderEditForm(
-      todo,
-      (patch) => { editTodo(todo.id, patch); editingIds.delete(todo.id); render(); }
-    ));
+    const onSave = (patch) => { editTodo(todo.id, patch); editingIds.delete(todo.id); render(); };
+    panel.appendChild(todo.type === "note" ? renderNoteEditForm(todo, onSave) : renderEditForm(todo, onSave));
     wrap.appendChild(panel);
   }
 
@@ -525,12 +523,22 @@ function renderChildrenSection(todo) {
   noteModeBtn.title = "Add a note instead of a checklist item";
   noteModeBtn.textContent = "N";
   noteModeBtn.onclick = () => {
+    // render() rebuilds this whole section from scratch, which would
+    // otherwise silently wipe out whatever was already typed — carry it
+    // over to the freshly-built input.
+    const draft = addInput.value;
     noteAddMode.has(todo.id) ? noteAddMode.delete(todo.id) : noteAddMode.add(todo.id);
     render();
+    const revived = document.getElementById("subAddInput-" + todo.id);
+    if (revived) {
+      revived.value = draft;
+      revived.focus();
+    }
   };
 
   const addInput = document.createElement("input");
   addInput.type = "text";
+  addInput.id = "subAddInput-" + todo.id; // looked up after a re-render to restore in-progress text (see noteModeBtn.onclick)
   addInput.placeholder = noteAddMode.has(todo.id) ? "Add a note..." : "Add a sub-item...";
   addInput.autocomplete = "off";
   addForm.onsubmit = (e) => {
@@ -1009,6 +1017,7 @@ function applyOp(list, op) {
       const t = list.find((x) => x.id === op.id);
       if (!t) break;
       t.text = op.patch.text;
+      if (op.patch.bold !== undefined) t.bold = op.patch.bold;
       if (op.patch.due_date) {
         t.due_date = op.patch.due_date;
         if (op.patch.due_time) t.due_time = op.patch.due_time; else delete t.due_time;
@@ -1210,11 +1219,17 @@ async function syncPending() {
   }
 }
 
-function addTodo(text) {
+// `isNote`: same checklist-item-vs-note choice sub-items already have (see
+// noteAddMode/addSubNote) — top-level items support it too via the add
+// bar's "N" toggle.
+function addTodo(text, isNote) {
   const trimmed = text.trim();
   if (!trimmed) return;
   const now = new Date().toISOString();
-  applyEdit({ type: "add", todo: { id: crypto.randomUUID(), text: trimmed, done: false, created_at: now, updated_at: now } });
+  const todo = isNote
+    ? { id: crypto.randomUUID(), type: "note", text: trimmed, bold: false, created_at: now, updated_at: now }
+    : { id: crypto.randomUUID(), text: trimmed, done: false, created_at: now, updated_at: now };
+  applyEdit({ type: "add", todo });
 }
 
 function toggleTodo(id) {
@@ -1287,12 +1302,18 @@ function deleteSubTodo(parentId, childId) {
   applyEdit({ type: "deleteSub", parentId, childId, now: new Date().toISOString() });
 }
 
-// Combined rename + due-date mutators for the inline edit form. `patch.due_date`
-// is a "YYYY-MM-DD" string to set, or a falsy value to clear the due date.
+// Combined rename + due-date/bold mutator for the inline edit form, used for
+// both checklist todos (renderEditForm's patch: {text, due_date, due_time})
+// and top-level notes (renderNoteEditForm's patch: {text, bold}) — each
+// passes only the fields its form has, and applyOp's "edit" case only
+// touches a field when the patch carries it.
 function editTodo(id, patch) {
   const trimmed = (patch.text || "").trim();
   if (!trimmed) return;
-  applyEdit({ type: "edit", id, now: new Date().toISOString(), patch: { text: trimmed, due_date: patch.due_date, due_time: patch.due_time } });
+  const opPatch = { text: trimmed };
+  if (patch.bold !== undefined) opPatch.bold = !!patch.bold;
+  if ("due_date" in patch) { opPatch.due_date = patch.due_date; opPatch.due_time = patch.due_time; }
+  applyEdit({ type: "edit", id, now: new Date().toISOString(), patch: opPatch });
 }
 
 function editSubTodo(parentId, childId, patch) {
@@ -1406,11 +1427,23 @@ function wireEvents() {
     unlockWithPassphrase(el("passphraseInput").value, el("rememberKey").checked);
   };
 
+  // The add bar is static markup (not rebuilt by render()), so unlike the
+  // per-item note toggle there's no re-render to lose typed text to —
+  // toggling just flips a closure-local flag and updates the button/input
+  // in place. Sticky across adds, matching noteAddMode's per-parent behavior.
+  let addIsNote = false;
+  const addNoteModeBtn = el("addNoteModeBtn");
+  const addInput = el("addInput");
+  addNoteModeBtn.onclick = () => {
+    addIsNote = !addIsNote;
+    addNoteModeBtn.classList.toggle("active", addIsNote);
+    addInput.placeholder = addIsNote ? "Add a note..." : "Add an item...";
+  };
+
   el("addForm").onsubmit = (e) => {
     e.preventDefault();
-    const input = el("addInput");
-    addTodo(input.value);
-    input.value = "";
+    addTodo(addInput.value, addIsNote);
+    addInput.value = "";
   };
 
   el("refreshBtn").onclick = () => {
