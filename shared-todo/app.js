@@ -216,7 +216,7 @@ const DRAG_HANDLE_SVG = '<svg viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.5">
 // element so callers can wire the handle to attachDragReorder against the
 // outer <li>, which drag needs to translate as a whole (see renderTodoItem /
 // renderChildrenSection).
-function renderRow(entity, { isSub, onToggle, onEditToggle, onRowClick, onDelete }) {
+function renderRow(entity, { isSub, onToggle, onEditToggle, onRowClick, onDelete, showEditBtn = true }) {
   const wrap = document.createElement("div");
   wrap.className = "swipe-wrap";
 
@@ -262,12 +262,14 @@ function renderRow(entity, { isSub, onToggle, onEditToggle, onRowClick, onDelete
   const badge = renderDaysBadge(entity);
   if (badge) row.appendChild(badge);
 
-  const editBtn = document.createElement("button");
-  editBtn.className = "todo-edit";
-  editBtn.title = "Edit";
-  editBtn.innerHTML = EDIT_PENCIL_SVG;
-  editBtn.onclick = (e) => { e.stopPropagation(); onEditToggle(); };
-  row.appendChild(editBtn);
+  if (showEditBtn) {
+    const editBtn = document.createElement("button");
+    editBtn.className = "todo-edit";
+    editBtn.title = "Edit";
+    editBtn.innerHTML = EDIT_PENCIL_SVG;
+    editBtn.onclick = (e) => { e.stopPropagation(); onEditToggle(); };
+    row.appendChild(editBtn);
+  }
 
   if (onRowClick) row.onclick = onRowClick;
   else row.classList.add("no-row-click");
@@ -452,6 +454,9 @@ function renderTodoItem(todo) {
     onEditToggle: () => { editingIds.has(todo.id) ? editingIds.delete(todo.id) : editingIds.add(todo.id); render(); },
     onRowClick: () => { shownChildrenIds.has(todo.id) ? shownChildrenIds.delete(todo.id) : shownChildrenIds.add(todo.id); render(); },
     onDelete: () => deleteTodoWithUndo(todo.id),
+    // Top-level rows only show the edit pencil once tapped open — sub-items
+    // keep it always visible (renderChildrenSection doesn't pass this).
+    showEditBtn: shownChildrenIds.has(todo.id),
   });
   wrap.appendChild(rowEl);
   attachDragReorder(handle, wrap, () => Array.from(el("todoList").children), (fromIndex, toIndex) => reorderTodo(todo.id, toIndex));
