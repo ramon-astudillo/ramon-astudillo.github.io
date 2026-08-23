@@ -1561,6 +1561,13 @@ async function refreshUpdateButtonLabel() {
 // app files (index.html/app.js/etc.) without touching localStorage, so the
 // cached passphrase key and Dropbox refresh token survive and you don't get
 // logged out just to pick up a new deploy.
+// Same list as sw.js's SHELL_FILES (minus the icons, which never change
+// often enough to matter here) — re-fetched below with cache: "reload" so
+// GitHub Pages' several-minutes-long HTTP cache-control on these files
+// doesn't leave location.reload() serving stale bytes even after the
+// service worker itself is gone and its own Cache Storage is cleared.
+const SHELL_FILE_URLS = ["./", "./index.html", "./config.js", "./crypto.js", "./dropbox.js", "./app.js", "./manifest.json"];
+
 async function forceUpdate() {
   const btn = el("forceUpdateBtn");
   btn.disabled = true;
@@ -1574,6 +1581,7 @@ async function forceUpdate() {
       const keys = await caches.keys();
       for (const key of keys) await caches.delete(key);
     }
+    await Promise.all(SHELL_FILE_URLS.map((u) => fetch(u, { cache: "reload" }).catch(() => {})));
   } finally {
     location.reload();
   }
