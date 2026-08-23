@@ -255,19 +255,51 @@ function renderRow(entity, { isSub, onToggle, onEditToggle, onRowClick, onDelete
   return { el: wrap, handle };
 }
 
+// Renders one entity (todo, sub-todo, or note) as a single Markdown-ish
+// line: "- [ ]"/"- [x]" for checkable items, plain text for notes, due date
+// (+ time, if set) as an ISO "@" suffix. `indent` is a tab count, so a
+// top-level item's own line is unindented and its children sit one tab in.
+function markdownLine(entity, indent) {
+  const prefix = "\t".repeat(indent);
+  const deadline = entity.due_date ? " @" + entity.due_date + (entity.due_time ? "T" + entity.due_time : "") : "";
+  if (entity.type === "note") return prefix + entity.text;
+  return prefix + "- [" + (entity.done ? "x" : " ") + "] " + entity.text + deadline;
+}
+
+// Full Markdown-ish text for the Copy button: the entity's own line, plus
+// one tab-indented line per child (checklist item, or plain text for a
+// note) — see markdownLine. A sub-todo has no `children` of its own (depth
+// is capped at 2), so this naturally reduces to just its own line there.
+function entityToMarkdown(entity) {
+  const lines = [markdownLine(entity, 0)];
+  for (const child of entity.children || []) lines.push(markdownLine(child, 1));
+  return lines.join("\n");
+}
+
+function copyEntityMarkdown(entity) {
+  if (!navigator.clipboard) {
+    toast("Clipboard not available in this browser.");
+    return;
+  }
+  navigator.clipboard.writeText(entityToMarkdown(entity)).then(
+    () => toast("Copied to clipboard."),
+    () => toast("Couldn't copy — clipboard access denied.")
+  );
+}
+
 // Shared rename + due-date/time form used by both top-level todos and
 // sub-todos. Time is optional and only meaningful when a date is set — if
 // the date is cleared, any time is dropped with it; if a date is set with no
-// time, callers treat that as start-of-day (00:00).
-function renderEditForm(entity, onSave, onCancel) {
+// time, callers treat that as start-of-day (00:00). The date/time pair sits
+// on its own row above the text input so neither competes with it for
+// width; there's no separate Cancel since tapping the edit pencil again
+// already closes this panel without saving.
+function renderEditForm(entity, onSave) {
   const form = document.createElement("form");
   form.className = "edit-form";
 
-  const textInput = document.createElement("input");
-  textInput.type = "text";
-  textInput.className = "edit-text";
-  textInput.value = entity.text;
-  textInput.required = true;
+  const dateRow = document.createElement("div");
+  dateRow.className = "edit-date-row";
 
   const dateInput = document.createElement("input");
   dateInput.type = "date";
@@ -279,17 +311,30 @@ function renderEditForm(entity, onSave, onCancel) {
   timeInput.className = "edit-time";
   timeInput.value = entity.due_time || "";
 
+  dateRow.append(dateInput, timeInput);
+
+  const textInput = document.createElement("input");
+  textInput.type = "text";
+  textInput.className = "edit-text";
+  textInput.value = entity.text;
+  textInput.required = true;
+
+  const btnRow = document.createElement("div");
+  btnRow.className = "edit-btn-row";
+
   const saveBtn = document.createElement("button");
   saveBtn.type = "submit";
   saveBtn.textContent = "Save";
 
-  const cancelBtn = document.createElement("button");
-  cancelBtn.type = "button";
-  cancelBtn.className = "cancel-btn";
-  cancelBtn.textContent = "Cancel";
-  cancelBtn.onclick = onCancel;
+  const copyBtn = document.createElement("button");
+  copyBtn.type = "button";
+  copyBtn.className = "copy-btn";
+  copyBtn.textContent = "Copy";
+  copyBtn.onclick = () => copyEntityMarkdown(entity);
 
-  form.append(textInput, dateInput, timeInput, saveBtn, cancelBtn);
+  btnRow.append(saveBtn, copyBtn);
+
+  form.append(dateRow, textInput, btnRow);
   form.onsubmit = (e) => {
     e.preventDefault();
     onSave({
@@ -302,8 +347,9 @@ function renderEditForm(entity, onSave, onCancel) {
 }
 
 // Edit form for note-type sub-items: just text + a bold toggle, no
-// checkbox/date fields since notes are never "done" or due.
-function renderNoteEditForm(entity, onSave, onCancel) {
+// checkbox/date fields since notes are never "done" or due. No Cancel, same
+// reasoning as renderEditForm.
+function renderNoteEditForm(entity, onSave) {
   const form = document.createElement("form");
   form.className = "edit-form";
 
@@ -324,17 +370,22 @@ function renderNoteEditForm(entity, onSave, onCancel) {
     boldBtn.classList.toggle("active", bold);
   };
 
+  const btnRow = document.createElement("div");
+  btnRow.className = "edit-btn-row";
+
   const saveBtn = document.createElement("button");
   saveBtn.type = "submit";
   saveBtn.textContent = "Save";
 
-  const cancelBtn = document.createElement("button");
-  cancelBtn.type = "button";
-  cancelBtn.className = "cancel-btn";
-  cancelBtn.textContent = "Cancel";
-  cancelBtn.onclick = onCancel;
+  const copyBtn = document.createElement("button");
+  copyBtn.type = "button";
+  copyBtn.className = "copy-btn";
+  copyBtn.textContent = "Copy";
+  copyBtn.onclick = () => copyEntityMarkdown(entity);
 
-  form.append(textInput, boldBtn, saveBtn, cancelBtn);
+  btnRow.append(boldBtn, saveBtn, copyBtn);
+
+  form.append(textInput, btnRow);
   form.onsubmit = (e) => {
     e.preventDefault();
     onSave({ text: textInput.value, bold });
@@ -388,8 +439,7 @@ function renderTodoItem(todo) {
     panel.className = "todo-expand";
     panel.appendChild(renderEditForm(
       todo,
-      (patch) => { editTodo(todo.id, patch); editingIds.delete(todo.id); render(); },
-      () => { editingIds.delete(todo.id); render(); }
+      (patch) => { editTodo(todo.id, patch); editingIds.delete(todo.id); render(); }
     ));
     wrap.appendChild(panel);
   }
@@ -431,13 +481,11 @@ function renderChildrenSection(todo) {
           child.type === "note"
             ? renderNoteEditForm(
                 child,
-                (patch) => { editSubNote(todo.id, child.id, patch); editingIds.delete(child.id); render(); },
-                () => { editingIds.delete(child.id); render(); }
+                (patch) => { editSubNote(todo.id, child.id, patch); editingIds.delete(child.id); render(); }
               )
             : renderEditForm(
                 child,
-                (patch) => { editSubTodo(todo.id, child.id, patch); editingIds.delete(child.id); render(); },
-                () => { editingIds.delete(child.id); render(); }
+                (patch) => { editSubTodo(todo.id, child.id, patch); editingIds.delete(child.id); render(); }
               )
         );
         li.appendChild(panel);

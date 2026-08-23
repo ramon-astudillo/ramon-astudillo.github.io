@@ -135,15 +135,16 @@
     background: var(--card); border: 1px solid var(--border); border-top: none;
     border-radius: 0 0 12px 12px; padding: 10px 14px; margin-top: -8px;
   }
-  .edit-form { display: flex; flex-wrap: wrap; gap: 8px; padding: 6px 0; }
-  .edit-form input[type=text] { flex: 1; min-width: 120px; padding: 8px 10px; font-size: 0.85rem; border-radius: 8px; }
-  .edit-form input[type=date],
-  .edit-form input[type=time] { flex: 0 0 auto; padding: 8px 10px; font-size: 0.85rem; border-radius: 8px; }
+  .edit-form { display: flex; flex-direction: column; gap: 8px; padding: 6px 0; }
+  .edit-date-row, .edit-btn-row { display: flex; gap: 8px; }
+  .edit-form input[type=text] { width: 100%; padding: 8px 10px; font-size: 0.85rem; border-radius: 8px; }
+  .edit-date-row input[type=date],
+  .edit-date-row input[type=time] { flex: 1; min-width: 0; padding: 8px 10px; font-size: 0.85rem; border-radius: 8px; }
   .edit-form button[type=submit] {
     background: var(--accent); color: white; border: none; border-radius: 8px;
     padding: 8px 14px; font-size: 0.85rem; cursor: pointer;
   }
-  .edit-form .cancel-btn {
+  .edit-form .copy-btn {
     background: none; border: 1px solid var(--border); border-radius: 8px;
     padding: 8px 14px; font-size: 0.85rem; cursor: pointer; color: var(--muted);
   }
