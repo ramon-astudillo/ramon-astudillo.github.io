@@ -83,9 +83,29 @@ function showScreen(name) {
   el("todoList").hidden = !isList;
   el("emptyState").hidden = true; // render() decides whether to show this
   el("addBar").hidden = !isList;
-  el("syncLine").hidden = !isList;
+  el("syncStatus").hidden = !isList;
+  el("refreshBtn").hidden = !isList;
   el("settingsBtn").hidden = !isList;
   el("tabBar").hidden = !isList;
+}
+
+// "system" | "light" | "dark", persisted per device (not synced — it's a
+// display preference, not list data). The initial paint is handled by an
+// inline script in index.html's <head> (before app.js even loads) so a
+// stored "dark" doesn't flash light first; this just keeps it in sync after
+// that and on user changes.
+const LS_THEME = "shared_todo_theme";
+
+function applyTheme(theme) {
+  if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+  else delete document.documentElement.dataset.theme;
+  const isDark = theme === "dark" || (theme !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  el("themeColorMeta").setAttribute("content", isDark ? "#3a1d47" : "#8e24aa");
+}
+
+function setTheme(theme) {
+  localStorage.setItem(LS_THEME, theme);
+  applyTheme(theme);
 }
 
 // `action` (optional): { label, onClick } — renders an inline button in the
@@ -1373,6 +1393,11 @@ async function tryStoredKey() {
 
 function wireEvents() {
   el("appVersionRow").textContent = "App version v" + CONFIG.APP_VERSION;
+
+  const savedTheme = localStorage.getItem(LS_THEME) || "system";
+  el("themeSelect").value = savedTheme;
+  applyTheme(savedTheme); // syncs themeColorMeta; [data-theme] itself was already set by index.html's inline script
+  el("themeSelect").onchange = (e) => setTheme(e.target.value);
 
   el("connectBtn").onclick = () => DropboxAuth.startLogin();
 
