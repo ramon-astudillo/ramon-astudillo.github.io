@@ -41,7 +41,16 @@ self.addEventListener("fetch", (event) => {
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, resp.clone()));
           return resp;
         })
-        .catch(() => cached);
+        // If there's nothing cached yet (e.g. first visit to this exact
+        // URL) and the network fetch itself fails, falling back to `cached`
+        // here resolves to undefined — respondWith(undefined) isn't a valid
+        // Response, which Chrome shows as a hard connection-reset error
+        // page instead of a normal offline message. Always resolve to a
+        // real Response.
+        .catch(() => cached || new Response(
+          "Offline and nothing cached yet for this page — check your connection and reload.",
+          { status: 503, statusText: "Service Unavailable", headers: { "Content-Type": "text/plain" } }
+        ));
       return cached || network;
     })
   );
