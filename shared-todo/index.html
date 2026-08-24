@@ -119,7 +119,12 @@
   .todo-list { list-style: none; margin: 8px 0; padding: 0; }
   .todo-item-wrap { margin-bottom: 8px; position: relative; transition: transform 0.15s ease; }
   .todo-item-wrap.drag-active { transition: none; z-index: 10; }
-  .swipe-wrap { overflow: hidden; border-radius: 12px; }
+  .swipe-wrap { overflow: hidden; border-radius: 12px; position: relative; }
+  .swipe-delete-bg {
+    position: absolute; inset: 0; background: #d64545; border-radius: 12px;
+    display: flex; align-items: center; justify-content: flex-end; padding-right: 20px;
+  }
+  .swipe-delete-bg svg { width: 20px; height: 20px; stroke: white; fill: none; }
   .todo-item {
     display: flex; align-items: center; gap: 12px;
     background: var(--card); border-radius: 12px; padding: 12px 14px;

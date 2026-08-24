@@ -205,6 +205,7 @@ function renderDaysBadge(entity) {
 }
 
 const EDIT_PENCIL_SVG = '<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>';
+const TRASH_BIN_SVG = '<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>';
 const DRAG_HANDLE_SVG = '<svg viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.5"></circle><circle cx="15" cy="6" r="1.5"></circle><circle cx="9" cy="12" r="1.5"></circle><circle cx="15" cy="12" r="1.5"></circle><circle cx="9" cy="18" r="1.5"></circle><circle cx="15" cy="18" r="1.5"></circle></svg>';
 
 // Builds the swipeable row (drag handle + radio + text + days badge + edit
@@ -219,6 +220,11 @@ const DRAG_HANDLE_SVG = '<svg viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.5">
 function renderRow(entity, { isSub, onToggle, onEditToggle, onRowClick, onDelete, showEditBtn = true }) {
   const wrap = document.createElement("div");
   wrap.className = "swipe-wrap";
+
+  const deleteBg = document.createElement("div");
+  deleteBg.className = "swipe-delete-bg";
+  deleteBg.innerHTML = TRASH_BIN_SVG;
+  wrap.appendChild(deleteBg);
 
   const isNote = entity.type === "note";
   const row = document.createElement("div");
