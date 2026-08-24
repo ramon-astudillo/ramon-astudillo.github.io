@@ -1,6 +1,6 @@
 // Minimal app-shell cache so the page can open offline. Never touches
 // Dropbox API calls or OAuth redirects — only caches this app's own files.
-const CACHE_NAME = "shared-todo-shell-v26";
+const CACHE_NAME = "shared-todo-shell-v27";
 const SHELL_FILES = [
   "./",
   "./index.html",
