@@ -119,13 +119,12 @@
   .todo-list { list-style: none; margin: 8px 0; padding: 0; }
   .todo-item-wrap { margin-bottom: 8px; position: relative; transition: transform 0.15s ease; }
   .todo-item-wrap.drag-active { transition: none; z-index: 10; }
-  /* Both children share the same grid cell, so the delete background is
-     sized off the same computed track as the row itself instead of an
-     independently-rounded absolute/inset box — avoids a 1px seam that
-     showed up on some row heights when the two were computed separately. */
   .swipe-wrap { display: grid; overflow: hidden; border-radius: 12px; }
+  /* Margined a few px smaller than the row on every side — deliberately
+     not the same size, so no pixel-rounding difference between the two
+     boxes can ever leave a sliver of red peeking past the row's edge. */
   .swipe-delete-bg {
-    grid-area: 1 / 1; background: #d64545;
+    grid-area: 1 / 1; margin: 3px; background: #d64545; border-radius: 9px;
     display: flex; align-items: center; justify-content: flex-end; padding-right: 20px;
   }
   .swipe-delete-bg svg { width: 20px; height: 20px; stroke: white; fill: none; }
