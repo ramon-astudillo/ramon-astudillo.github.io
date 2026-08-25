@@ -666,6 +666,10 @@ function attachSwipeGestures(rowEl, { onDelete, onAssignOpen, deleteBg, assignBg
     axis = null;
     dx = 0;
     rowEl.classList.add("dragging");
+    if (deleteBg && assignBg) {
+      deleteBg.style.opacity = "0";
+      assignBg.style.opacity = "0";
+    }
   });
 
   rowEl.addEventListener("pointermove", (e) => {
@@ -684,10 +688,14 @@ function attachSwipeGestures(rowEl, { onDelete, onAssignOpen, deleteBg, assignBg
     // Both backgrounds fill the same grid cell behind the row (see
     // .swipe-delete-bg/.swipe-assign-bg), so whichever comes later in the
     // DOM would otherwise always paint over the other regardless of swipe
-    // direction — raise whichever one the current drag is actually revealing.
+    // direction. Fade out whichever one the drag isn't revealing — NOT via
+    // z-index: the row itself has no explicit z-index (it relies on being
+    // last in DOM order to stay on top), so giving a background z-index:1
+    // would lift it above the row instead of just above its sibling
+    // background, hiding the whole row under a solid color block.
     if (deleteBg && assignBg) {
-      deleteBg.style.zIndex = dx < 0 ? "1" : "0";
-      assignBg.style.zIndex = dx > 0 ? "1" : "0";
+      deleteBg.style.opacity = dx < 0 ? "1" : "0";
+      assignBg.style.opacity = dx > 0 ? "1" : "0";
     }
   });
 
