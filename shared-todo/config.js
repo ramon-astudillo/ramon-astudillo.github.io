@@ -25,7 +25,13 @@ const CONFIG = {
   // Bump alongside sw.js's CACHE_NAME suffix on every deploy that changes
   // app-shell files, so Settings can show which version a device is
   // actually running (useful for confirming an update landed).
-  APP_VERSION: "26",
+  APP_VERSION: "29",
+
+  // Preset swatches for a device's identity color (see Settings → Your
+  // name), used to tint the assignee avatar shown on an assigned todo.
+  // Picked, not hashed from the name, per explicit request — two people
+  // with similar names shouldn't risk landing on similar colors.
+  USER_COLORS: ["#e53935", "#fb8c00", "#c0a000", "#43a047", "#00acc1", "#1e88e5", "#5e35b1", "#d81b60"],
 
   // A small, generic, public icon set. Boards reference one of these keys
   // from the (private, encrypted) manifest — the icon glyphs themselves

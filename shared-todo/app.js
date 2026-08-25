@@ -66,6 +66,7 @@ function clearPersistedQueue(boardId) {
   localStorage.removeItem(queueKey(boardId));
 }
 const editingIds = new Set(); // todo/sub-todo IDs whose rename/date edit panel is open (local UI state, not synced; ids are UUIDs so one Set covers both levels)
+const assigningIds = new Set(); // todo/sub-todo IDs whose assignee-picker panel is open (local UI state, not synced; opened by swipe-right)
 const shownChildrenIds = new Set(); // top-level todo IDs whose sub-todo list + add-sub-todo form is shown (local UI state, not synced)
 const noteAddMode = new Set(); // top-level todo IDs whose add-sub-item form is currently in "add note" mode (local UI state, not synced)
 
@@ -206,20 +207,27 @@ function renderDaysBadge(entity) {
 
 const EDIT_PENCIL_SVG = '<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>';
 const TRASH_BIN_SVG = '<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>';
+const PERSON_SVG = '<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>';
 const DRAG_HANDLE_SVG = '<svg viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.5"></circle><circle cx="15" cy="6" r="1.5"></circle><circle cx="9" cy="12" r="1.5"></circle><circle cx="15" cy="12" r="1.5"></circle><circle cx="9" cy="18" r="1.5"></circle><circle cx="15" cy="18" r="1.5"></circle></svg>';
 
-// Builds the swipeable row (drag handle + radio + text + days badge + edit
-// icon) shared by top-level todos and sub-todos. The edit icon always
-// toggles the rename/date panel; `onRowClick` (top-level only) toggles the
-// sub-todo list separately — the two are independent so opening one doesn't
-// force the other open too. Swiping left past a threshold deletes the row
-// (see attachSwipeToDelete). Returns { el, handle } rather than just the row
-// element so callers can wire the handle to attachDragReorder against the
-// outer <li>, which drag needs to translate as a whole (see renderTodoItem /
-// renderChildrenSection).
-function renderRow(entity, { isSub, onToggle, onEditToggle, onRowClick, onDelete, showEditBtn = true }) {
+// Builds the swipeable row (drag handle + radio + text + days badge +
+// assignee avatar + edit icon) shared by top-level todos and sub-todos. The
+// edit icon always toggles the rename/date panel; `onRowClick` (top-level
+// only) toggles the sub-todo list separately — the two are independent so
+// opening one doesn't force the other open too. Swiping left past a
+// threshold deletes the row; swiping right (only if `onAssignOpen` is
+// passed) opens the assignee picker (see attachSwipeGestures). Returns
+// { el, handle } rather than just the row element so callers can wire the
+// handle to attachDragReorder against the outer <li>, which drag needs to
+// translate as a whole (see renderTodoItem / renderChildrenSection).
+function renderRow(entity, { isSub, onToggle, onEditToggle, onRowClick, onDelete, onAssignOpen, showEditBtn = true }) {
   const wrap = document.createElement("div");
   wrap.className = "swipe-wrap";
+
+  const assignBg = document.createElement("div");
+  assignBg.className = "swipe-assign-bg";
+  assignBg.innerHTML = PERSON_SVG;
+  wrap.appendChild(assignBg);
 
   const deleteBg = document.createElement("div");
   deleteBg.className = "swipe-delete-bg";
@@ -268,6 +276,16 @@ function renderRow(entity, { isSub, onToggle, onEditToggle, onRowClick, onDelete
   const badge = renderDaysBadge(entity);
   if (badge) row.appendChild(badge);
 
+  if (entity.assigned_to) {
+    const user = findUser(entity.assigned_to);
+    const avatar = document.createElement("span");
+    avatar.className = "assignee-avatar";
+    avatar.style.background = userColor(user);
+    avatar.textContent = userInitial(user);
+    avatar.title = "Assigned to " + ((user && user.name) || "Unnamed");
+    row.appendChild(avatar);
+  }
+
   if (showEditBtn) {
     const editBtn = document.createElement("button");
     editBtn.className = "todo-edit";
@@ -281,7 +299,7 @@ function renderRow(entity, { isSub, onToggle, onEditToggle, onRowClick, onDelete
   else row.classList.add("no-row-click");
 
   wrap.appendChild(row);
-  attachSwipeToDelete(row, onDelete);
+  attachSwipeGestures(row, { onDelete, onAssignOpen });
   return { el: wrap, handle };
 }
 
@@ -315,6 +333,46 @@ function copyEntityMarkdown(entity) {
     () => toast("Copied to clipboard."),
     () => toast("Couldn't copy — clipboard access denied.")
   );
+}
+
+// Panel opened by swipe-right (see attachSwipeGestures's onAssignOpen),
+// listing every registered device identity as a tappable chip; picking one
+// calls onAssign(userId) and an already-assigned entity also gets an
+// "Unassign" chip. Shared by top-level todos and sub-todos, same as
+// renderEditForm below.
+function renderAssignPanel(entity, onAssign) {
+  const panel = document.createElement("div");
+  panel.className = "assign-panel";
+
+  if (users.length === 0) {
+    const p = document.createElement("p");
+    p.className = "assign-empty";
+    p.textContent = "No one has set a name yet — add yours in Settings.";
+    panel.appendChild(p);
+    return panel;
+  }
+
+  for (const user of users) {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "assign-chip" + (entity.assigned_to === user.id ? " selected" : "");
+    chip.innerHTML =
+      '<span class="assignee-avatar" style="background:' + userColor(user) + '">' + userInitial(user) + "</span>" +
+      "<span>" + (user.name || "Unnamed") + "</span>";
+    chip.onclick = () => onAssign(user.id);
+    panel.appendChild(chip);
+  }
+
+  if (entity.assigned_to) {
+    const clearBtn = document.createElement("button");
+    clearBtn.type = "button";
+    clearBtn.className = "assign-chip assign-clear";
+    clearBtn.textContent = "Unassign";
+    clearBtn.onclick = () => onAssign(null);
+    panel.appendChild(clearBtn);
+  }
+
+  return panel;
 }
 
 // Shared rename + due-date/time form used by both top-level todos and
@@ -460,6 +518,7 @@ function renderTodoItem(todo) {
     onEditToggle: () => { editingIds.has(todo.id) ? editingIds.delete(todo.id) : editingIds.add(todo.id); render(); },
     onRowClick: () => { shownChildrenIds.has(todo.id) ? shownChildrenIds.delete(todo.id) : shownChildrenIds.add(todo.id); render(); },
     onDelete: () => deleteTodoWithUndo(todo.id),
+    onAssignOpen: () => { assigningIds.has(todo.id) ? assigningIds.delete(todo.id) : assigningIds.add(todo.id); render(); },
     // Top-level rows only show the edit pencil once tapped open — sub-items
     // keep it always visible (renderChildrenSection doesn't pass this).
     showEditBtn: shownChildrenIds.has(todo.id),
@@ -472,6 +531,13 @@ function renderTodoItem(todo) {
     panel.className = "todo-expand";
     const onSave = (patch) => { editTodo(todo.id, patch); editingIds.delete(todo.id); render(); };
     panel.appendChild(todo.type === "note" ? renderNoteEditForm(todo, onSave) : renderEditForm(todo, onSave));
+    wrap.appendChild(panel);
+  }
+
+  if (assigningIds.has(todo.id)) {
+    const panel = document.createElement("div");
+    panel.className = "todo-expand";
+    panel.appendChild(renderAssignPanel(todo, (userId) => { assignTodo(todo.id, userId); assigningIds.delete(todo.id); render(); }));
     wrap.appendChild(panel);
   }
 
@@ -501,6 +567,7 @@ function renderChildrenSection(todo) {
         onToggle: () => toggleSubTodo(todo.id, child.id),
         onEditToggle: () => { editingIds.has(child.id) ? editingIds.delete(child.id) : editingIds.add(child.id); render(); },
         onDelete: () => deleteSubTodoWithUndo(todo.id, child.id),
+        onAssignOpen: () => { assigningIds.has(child.id) ? assigningIds.delete(child.id) : assigningIds.add(child.id); render(); },
       });
       li.appendChild(childRowEl);
       attachDragReorder(childHandle, li, () => Array.from(ul.children), (fromIndex, toIndex) => reorderSubTodo(todo.id, child.id, toIndex));
@@ -519,6 +586,13 @@ function renderChildrenSection(todo) {
                 (patch) => { editSubTodo(todo.id, child.id, patch); editingIds.delete(child.id); render(); }
               )
         );
+        li.appendChild(panel);
+      }
+
+      if (assigningIds.has(child.id)) {
+        const panel = document.createElement("div");
+        panel.className = "todo-expand";
+        panel.appendChild(renderAssignPanel(child, (userId) => { assignSubTodo(todo.id, child.id, userId); assigningIds.delete(child.id); render(); }));
         li.appendChild(panel);
       }
 
@@ -566,15 +640,19 @@ function renderChildrenSection(todo) {
   return section;
 }
 
-// Attaches a left-swipe-to-delete gesture to `rowEl` via Pointer Events
-// (unifies touch + mouse). Vertical drags are left alone so the list still
-// scrolls normally; horizontal drags past SWIPE_DELETE_THRESHOLD (or a fast
-// flick past a smaller distance) call `onDelete`, otherwise the row snaps
-// back. Gesture state is closure-local per row, not shared module state.
+// Attaches a horizontal swipe gesture to `rowEl` via Pointer Events (unifies
+// touch + mouse). Vertical drags are left alone so the list still scrolls
+// normally. A left swipe past SWIPE_THRESHOLD (or a fast flick past a
+// smaller distance) deletes the row, sliding it fully off-screen first —
+// that's a destructive, unrecoverable-looking action so it commits visually.
+// A right swipe past the same threshold instead opens the assignee picker
+// (see onAssignOpen/renderAssignPanel) and snaps back to place, since picking
+// a person is a second step, not something the swipe alone can express.
+// Gesture state is closure-local per row, not shared module state.
 const SWIPE_DEADZONE = 8;
-const SWIPE_DELETE_THRESHOLD = 80;
+const SWIPE_THRESHOLD = 80;
 
-function attachSwipeToDelete(rowEl, onDelete) {
+function attachSwipeGestures(rowEl, { onDelete, onAssignOpen }) {
   let startX = 0, startY = 0, startTime = 0;
   let axis = null; // null | "x" | "y", decided once past the deadzone
   let dx = 0;
@@ -601,7 +679,7 @@ function attachSwipeToDelete(rowEl, onDelete) {
     }
     if (axis !== "x") return;
     e.preventDefault();
-    dx = Math.min(0, curDx);
+    dx = onAssignOpen ? curDx : Math.min(0, curDx);
     rowEl.style.transform = "translateX(" + dx + "px)";
   });
 
@@ -619,9 +697,12 @@ function attachSwipeToDelete(rowEl, onDelete) {
       const velocity = dx / Math.max(elapsed, 1);
       suppressClick = true;
       setTimeout(() => { suppressClick = false; }, 0);
-      if (dx < -SWIPE_DELETE_THRESHOLD || (dx < -30 && velocity < -0.5)) {
+      if (dx < -SWIPE_THRESHOLD || (dx < -30 && velocity < -0.5)) {
         rowEl.style.transform = "translateX(-100%)";
         setTimeout(onDelete, 150);
+      } else if (onAssignOpen && (dx > SWIPE_THRESHOLD || (dx > 30 && velocity > 0.5))) {
+        rowEl.style.transform = "translateX(0)";
+        onAssignOpen();
       } else {
         rowEl.style.transform = "translateX(0)";
       }
@@ -815,7 +896,7 @@ async function ensureManifest(allowOfflineFallback) {
     // app — no separate sign-up step (see deviceId above).
     if (!users.some((u) => u.id === deviceId)) {
       manifest.users = users;
-      manifest.users.push({ id: deviceId, name: null, created_at: new Date().toISOString() });
+      manifest.users.push({ id: deviceId, name: null, color: null, created_at: new Date().toISOString() });
       await saveManifest(manifest);
     }
     return;
@@ -829,7 +910,7 @@ async function ensureManifest(allowOfflineFallback) {
     icon: "list",
     file: legacyText !== null ? LEGACY_TODO_PATH : "/board-1.json",
   });
-  manifest.users.push({ id: deviceId, name: null, created_at: new Date().toISOString() });
+  manifest.users.push({ id: deviceId, name: null, color: null, created_at: new Date().toISOString() });
   await saveManifest(manifest);
 }
 
@@ -885,6 +966,26 @@ function wireIconPicker(container, initialSelected) {
   for (const btn of container.querySelectorAll("button")) {
     btn.onclick = () => {
       selected = btn.dataset.icon;
+      for (const b of container.querySelectorAll("button")) b.classList.toggle("selected", b === btn);
+    };
+  }
+  return () => selected;
+}
+
+function colorPickerHtml(selected) {
+  return CONFIG.USER_COLORS.map((c) =>
+    '<button type="button" data-color="' + c + '" class="' + (c === selected ? "selected" : "") + '" style="background:' + c + '"></button>'
+  ).join("");
+}
+
+// Same selected-getter pattern as wireIconPicker, for the identity color
+// swatches in Settings.
+function wireColorPicker(container, initialSelected) {
+  container.innerHTML = colorPickerHtml(initialSelected);
+  let selected = initialSelected;
+  for (const btn of container.querySelectorAll("button")) {
+    btn.onclick = () => {
+      selected = btn.dataset.color;
       for (const b of container.querySelectorAll("button")) b.classList.toggle("selected", b === btn);
     };
   }
@@ -969,22 +1070,36 @@ async function renameBoard(id, label, icon) {
   renderTabs();
 }
 
-// Sets (or clears) this device's display name in the shared manifest. The
-// device is normally already registered by ensureManifest on load; a
+// Sets this device's display name + assignee color in the shared manifest.
+// The device is normally already registered by ensureManifest on load; a
 // from-scratch manifest.users entry is created here too just in case this
 // runs before that's happened (e.g. a retried save after a failed load).
-async function setMyName(name) {
+async function setMyIdentity(name, color) {
   const trimmed = name.trim();
   const manifest = await fetchManifest() || emptyManifest();
   if (!manifest.users) manifest.users = [];
   let me = manifest.users.find((u) => u.id === deviceId);
   if (!me) {
-    me = { id: deviceId, name: null, created_at: new Date().toISOString() };
+    me = { id: deviceId, name: null, color: null, created_at: new Date().toISOString() };
     manifest.users.push(me);
   }
   me.name = trimmed || null;
+  me.color = color || null;
   await saveManifest(manifest);
+  render(); // re-tint any rows already assigned to this device
   toast(trimmed ? "Name saved." : "Name cleared.");
+}
+
+function findUser(id) {
+  return users.find((u) => u.id === id);
+}
+
+function userInitial(user) {
+  return user && user.name ? user.name.trim()[0].toUpperCase() : "?";
+}
+
+function userColor(user) {
+  return (user && user.color) || "var(--muted)";
 }
 
 async function deleteBoard(id) {
@@ -1081,6 +1196,20 @@ function applyOp(list, op) {
         delete child.due_date;
         delete child.due_time;
       }
+      child.updated_at = op.now;
+      parent.updated_at = op.now;
+      break;
+    }
+    case "assign": {
+      const t = list.find((x) => x.id === op.id);
+      if (t) { t.assigned_to = op.userId; t.updated_at = op.now; }
+      break;
+    }
+    case "assignSub": {
+      const parent = list.find((x) => x.id === op.parentId);
+      const child = parent && parent.children && parent.children.find((c) => c.id === op.childId);
+      if (!child) break;
+      child.assigned_to = op.userId;
       child.updated_at = op.now;
       parent.updated_at = op.now;
       break;
@@ -1247,6 +1376,15 @@ function addTodo(text, isNote) {
 
 function toggleTodo(id) {
   applyEdit({ type: "toggle", id, now: new Date().toISOString() });
+}
+
+// `userId` is a device id from `users`, or null to unassign.
+function assignTodo(id, userId) {
+  applyEdit({ type: "assign", id, userId, now: new Date().toISOString() });
+}
+
+function assignSubTodo(parentId, childId, userId) {
+  applyEdit({ type: "assignSub", parentId, childId, userId, now: new Date().toISOString() });
 }
 
 function deleteTodo(id) {
@@ -1485,19 +1623,21 @@ function wireEvents() {
   };
 
   let getAddBoardIcon = () => "list";
+  let getUserColor = () => CONFIG.USER_COLORS[0];
   el("settingsBtn").onclick = () => {
     renderManageBoards();
     el("addBoardName").value = "";
     getAddBoardIcon = wireIconPicker(el("addBoardIconPicker"), "list");
     const me = users.find((u) => u.id === deviceId);
     el("userNameInput").value = (me && me.name) || "";
+    getUserColor = wireColorPicker(el("userColorPicker"), (me && me.color) || CONFIG.USER_COLORS[0]);
     el("settingsPanel").classList.add("open");
     refreshUpdateButtonLabel();
   };
 
   el("userNameForm").onsubmit = (e) => {
     e.preventDefault();
-    setMyName(el("userNameInput").value);
+    setMyIdentity(el("userNameInput").value, getUserColor());
   };
   el("closeSettingsBtn").onclick = () => el("settingsPanel").classList.remove("open");
   el("settingsPanel").onclick = (e) => {

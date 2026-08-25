@@ -85,6 +85,12 @@
   }
   .icon-picker button.selected { border-color: var(--accent); color: var(--accent); }
   .icon-picker svg { width: 18px; height: 18px; stroke: currentColor; fill: none; }
+  .color-picker { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0; }
+  .color-picker button {
+    width: 26px; height: 26px; border-radius: 50%; border: 2px solid transparent;
+    cursor: pointer; padding: 0;
+  }
+  .color-picker button.selected { border-color: var(--text); }
   .add-board-form { display: flex; flex-direction: column; gap: 8px; padding-top: 8px; border-top: 1px solid var(--border); margin-top: 4px; }
   .add-board-form input[type=text] { padding: 8px 10px; font-size: 0.85rem; border-radius: 8px; }
   .icon-btn {
@@ -128,6 +134,14 @@
     display: flex; align-items: center; justify-content: flex-end; padding-right: 20px;
   }
   .swipe-delete-bg svg { width: 20px; height: 20px; stroke: white; fill: none; }
+  /* Mirror of .swipe-delete-bg: yellow, icon on the left, revealed when the
+     row is dragged right instead of left. Same deliberately-smaller margin
+     trick to avoid a rendering-seam sliver (see the note on the red one). */
+  .swipe-assign-bg {
+    grid-area: 1 / 1; margin: 3px; background: #d9a30b; border-radius: 9px;
+    display: flex; align-items: center; justify-content: flex-start; padding-left: 20px;
+  }
+  .swipe-assign-bg svg { width: 20px; height: 20px; stroke: white; fill: none; }
   .swipe-wrap > .todo-item { grid-area: 1 / 1; }
   .todo-item {
     display: flex; align-items: center; gap: 12px;
@@ -164,6 +178,20 @@
   .todo-days { font-size: 0.8rem; color: var(--muted); white-space: nowrap; }
   .todo-days.today { color: var(--accent); font-weight: 600; }
   .todo-days.overdue { color: var(--danger); font-weight: 600; }
+  .assignee-avatar {
+    width: 20px; height: 20px; min-width: 20px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.7rem; font-weight: 700; color: white; flex: none;
+  }
+  .assign-panel { display: flex; flex-wrap: wrap; gap: 8px; padding: 6px 0; }
+  .assign-empty { color: var(--muted); font-size: 0.85rem; margin: 6px 0; }
+  .assign-chip {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--bg); border: 1px solid var(--border); border-radius: 20px;
+    padding: 6px 12px 6px 6px; font-size: 0.85rem; color: var(--text); cursor: pointer;
+  }
+  .assign-chip.selected { border-color: var(--accent); }
+  .assign-chip.assign-clear { padding-left: 12px; color: var(--muted); }
   .todo-edit {
     background: none; border: none; color: var(--muted); padding: 6px;
     cursor: pointer; display: flex; align-items: center; justify-content: center;
@@ -254,6 +282,9 @@
     padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 0.9rem;
   }
   .settings-sheet .row:last-of-type { border-bottom: none; }
+  .settings-sheet .row.identity-row { flex-direction: column; align-items: stretch; gap: 8px; }
+  .settings-sheet .row.identity-row .identity-name-line { display: flex; justify-content: space-between; align-items: center; }
+  .settings-sheet .row.identity-row .row-actions { justify-content: flex-end; }
   .settings-sheet button.secondary {
     background: none; border: 1px solid var(--border); border-radius: 8px;
     padding: 8px 14px; font-size: 0.85rem; cursor: pointer; color: var(--text);
@@ -359,10 +390,13 @@
           <option value="dark">Dark</option>
         </select>
       </div>
-      <form class="row" id="userNameForm">
-        <span>Your name</span>
-        <span class="row-actions">
+      <form class="row identity-row" id="userNameForm">
+        <span class="identity-name-line">
+          <span>Your name</span>
           <input type="text" id="userNameInput" placeholder="Optional" autocomplete="off">
+        </span>
+        <div class="color-picker" id="userColorPicker"></div>
+        <span class="row-actions">
           <button class="secondary" type="submit">Save</button>
         </span>
       </form>
