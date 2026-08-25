@@ -25,7 +25,7 @@ const CONFIG = {
   // Bump alongside sw.js's CACHE_NAME suffix on every deploy that changes
   // app-shell files, so Settings can show which version a device is
   // actually running (useful for confirming an update landed).
-  APP_VERSION: "30",
+  APP_VERSION: "31",
 
   // Preset swatches for a device's identity color (see Settings → Your
   // name), used to tint the assignee avatar shown on an assigned todo.

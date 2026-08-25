@@ -1149,6 +1149,15 @@ function applyOp(list, op) {
       if (idx > -1) list.splice(idx, 1);
       break;
     }
+    // Undo for "delete" — reinserts at its original index instead of at the
+    // end (which is what a plain "add" op would do), so undoing a delete
+    // near the top of a long list doesn't silently drop the item to the
+    // bottom, out of view, looking like it got deleted all over again.
+    case "restore": {
+      const idx = Math.min(op.index, list.length);
+      list.splice(idx, 0, op.todo);
+      break;
+    }
     case "edit": {
       const t = list.find((x) => x.id === op.id);
       if (!t) break;
@@ -1189,6 +1198,17 @@ function applyOp(list, op) {
         parent.children.splice(idx, 1);
         parent.updated_at = op.now;
       }
+      break;
+    }
+    // Undo for "deleteSub" — see "restore" above for why this reinserts at
+    // the original index rather than appending.
+    case "restoreSub": {
+      const parent = list.find((x) => x.id === op.parentId);
+      if (!parent) break;
+      if (!parent.children) parent.children = [];
+      const idx = Math.min(op.index, parent.children.length);
+      parent.children.splice(idx, 0, op.todo);
+      parent.updated_at = op.now;
       break;
     }
     case "editSub": {
@@ -1493,27 +1513,34 @@ function editSubNote(parentId, childId, patch) {
 // Dropbox by the time Undo is tapped, since it never tries to cancel/splice
 // an already-queued or already-flushed op.
 function deleteTodoWithUndo(id) {
-  const todo = todos.find((t) => t.id === id);
-  if (!todo) return;
-  const snapshot = JSON.parse(JSON.stringify(todo));
+  const index = todos.findIndex((t) => t.id === id);
+  if (index === -1) return;
+  const snapshot = JSON.parse(JSON.stringify(todos[index]));
   deleteTodo(id);
-  toast('Deleted "' + todo.text + '"', {
+  // Stale local-only UI state (open edit/assign panels, expanded children)
+  // would otherwise linger keyed to this id and reappear if it's undone.
+  editingIds.delete(id);
+  assigningIds.delete(id);
+  shownChildrenIds.delete(id);
+  toast('Deleted "' + snapshot.text + '"', {
     label: "Undo",
-    onClick: () => applyEdit({ type: "add", todo: snapshot }),
+    onClick: () => applyEdit({ type: "restore", index, todo: snapshot }),
   });
 }
 
 function deleteSubTodoWithUndo(parentId, childId) {
   const parent = todos.find((t) => t.id === parentId);
-  const child = parent && parent.children && parent.children.find((c) => c.id === childId);
-  if (!child) return;
-  const snapshot = JSON.parse(JSON.stringify(child));
+  const index = parent && parent.children ? parent.children.findIndex((c) => c.id === childId) : -1;
+  if (index === -1) return;
+  const snapshot = JSON.parse(JSON.stringify(parent.children[index]));
   deleteSubTodo(parentId, childId);
-  toast('Deleted "' + child.text + '"', {
+  editingIds.delete(childId);
+  assigningIds.delete(childId);
+  toast('Deleted "' + snapshot.text + '"', {
     label: "Undo",
-    // parent may have been deleted meanwhile — applyOp's "addSub" case
+    // parent may have been deleted meanwhile — applyOp's "restoreSub" case
     // already no-ops silently if the parent id isn't found.
-    onClick: () => applyEdit({ type: "addSub", parentId, now: new Date().toISOString(), todo: snapshot }),
+    onClick: () => applyEdit({ type: "restoreSub", parentId, index, now: new Date().toISOString(), todo: snapshot }),
   });
 }
 
