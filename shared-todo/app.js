@@ -299,7 +299,7 @@ function renderRow(entity, { isSub, onToggle, onEditToggle, onRowClick, onDelete
   else row.classList.add("no-row-click");
 
   wrap.appendChild(row);
-  attachSwipeGestures(row, { onDelete, onAssignOpen });
+  attachSwipeGestures(row, { onDelete, onAssignOpen, deleteBg, assignBg });
   return { el: wrap, handle };
 }
 
@@ -652,7 +652,7 @@ function renderChildrenSection(todo) {
 const SWIPE_DEADZONE = 8;
 const SWIPE_THRESHOLD = 80;
 
-function attachSwipeGestures(rowEl, { onDelete, onAssignOpen }) {
+function attachSwipeGestures(rowEl, { onDelete, onAssignOpen, deleteBg, assignBg }) {
   let startX = 0, startY = 0, startTime = 0;
   let axis = null; // null | "x" | "y", decided once past the deadzone
   let dx = 0;
@@ -681,6 +681,14 @@ function attachSwipeGestures(rowEl, { onDelete, onAssignOpen }) {
     e.preventDefault();
     dx = onAssignOpen ? curDx : Math.min(0, curDx);
     rowEl.style.transform = "translateX(" + dx + "px)";
+    // Both backgrounds fill the same grid cell behind the row (see
+    // .swipe-delete-bg/.swipe-assign-bg), so whichever comes later in the
+    // DOM would otherwise always paint over the other regardless of swipe
+    // direction — raise whichever one the current drag is actually revealing.
+    if (deleteBg && assignBg) {
+      deleteBg.style.zIndex = dx < 0 ? "1" : "0";
+      assignBg.style.zIndex = dx > 0 ? "1" : "0";
+    }
   });
 
   // Swallow the click a touch/mouse release synthesizes after a horizontal
