@@ -205,6 +205,20 @@ function renderDaysBadge(entity) {
   return span;
 }
 
+// A top-level item with no due_date of its own borrows the closest upcoming
+// deadline among its still-open sub-items (notes and done sub-items don't
+// count), so it shows *some* urgency in the list without the user having to
+// open every parent to see what's due soon.
+function earliestChildDeadline(entity) {
+  const candidates = (entity.children || []).filter((c) => c.type !== "note" && !c.done && c.due_date);
+  if (candidates.length === 0) return null;
+  return candidates.reduce((best, c) => {
+    const key = c.due_date + "T" + (c.due_time || "00:00");
+    const bestKey = best.due_date + "T" + (best.due_time || "00:00");
+    return key < bestKey ? c : best;
+  });
+}
+
 const EDIT_PENCIL_SVG = '<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>';
 const TRASH_BIN_SVG = '<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>';
 const PERSON_SVG = '<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>';
@@ -273,8 +287,17 @@ function renderRow(entity, { isSub, onToggle, onEditToggle, onRowClick, onDelete
     row.appendChild(countSpan);
   }
 
-  const badge = renderDaysBadge(entity);
-  if (badge) row.appendChild(badge);
+  let inheritedDeadline = false;
+  let badgeEntity = entity;
+  if (!isSub && !isNote && !entity.due_date) {
+    const inherited = earliestChildDeadline(entity);
+    if (inherited) { badgeEntity = inherited; inheritedDeadline = true; }
+  }
+  const badge = renderDaysBadge(badgeEntity);
+  if (badge) {
+    if (inheritedDeadline) badge.classList.add("inherited");
+    row.appendChild(badge);
+  }
 
   if (entity.assigned_to) {
     const user = findUser(entity.assigned_to);
