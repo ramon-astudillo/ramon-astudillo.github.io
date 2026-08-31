@@ -1866,6 +1866,19 @@ function wireEvents() {
     if (e.target === el("settingsPanel")) el("settingsPanel").classList.remove("open");
   };
 
+  // Visible counterpart to the add-bar paste shortcut. A <textarea> keeps its
+  // newlines natively, so this path needs no clipboard interception and works
+  // the same on desktop — and unlike the paste gesture, it is discoverable.
+  el("importForm").onsubmit = (e) => {
+    e.preventDefault();
+    const lines = el("importText").value.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    if (lines.length === 0) return;
+    // Close first: bulkAdd confirms, then renders the result behind this sheet.
+    el("settingsPanel").classList.remove("open");
+    el("importText").value = "";
+    bulkAdd(lines, false);
+  };
+
   el("addBoardForm").onsubmit = (e) => {
     e.preventDefault();
     addBoard(el("addBoardName").value, getAddBoardIcon());

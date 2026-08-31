@@ -307,6 +307,13 @@
     font-size: 0.85rem; width: 120px; background: var(--card); color: var(--text);
   }
   .settings-sheet .row .row-actions { display: flex; gap: 6px; }
+  .import-form { display: flex; flex-direction: column; gap: 8px; padding: 4px 0 12px; }
+  .import-form textarea {
+    width: 100%; box-sizing: border-box; resize: vertical; min-height: 96px;
+    padding: 8px; border-radius: 8px; border: 1px solid var(--border);
+    font-size: 0.85rem; font-family: inherit; background: var(--card); color: var(--text);
+  }
+  .import-form .import-hint { font-size: 0.78rem; color: var(--muted); }
   .settings-sheet .row select {
     padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border);
     font-size: 0.85rem; background: var(--card); color: var(--text);
@@ -417,6 +424,13 @@
         <div class="icon-picker" id="addBoardIconPicker"></div>
         <button class="secondary" type="submit">Add list</button>
       </form>
+      <h2 style="margin-top:16px;">Import items</h2>
+      <form class="import-form" id="importForm">
+        <textarea id="importText" placeholder="Paste a list here, one item per line..."></textarea>
+        <span class="import-hint">Adds to the list you currently have open. A leading emoji becomes the item's icon.</span>
+        <button class="secondary" type="submit">Import</button>
+      </form>
+
       <div class="close-row"><button id="closeSettingsBtn">Close</button></div>
     </div>
   </div>
