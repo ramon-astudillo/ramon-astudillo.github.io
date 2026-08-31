@@ -194,6 +194,113 @@ function daysLeftLabel(dueDateStr, dueTimeStr) {
   return { text: diffDays + "d", cls: "" };
 }
 
+// An emoji typed at the start of an item's text ("📌 Item text") is split off
+// into the item's `icon` field instead of staying in the text. The phone's
+// own emoji keyboard is the picker, which is deliberate: no emoji palette
+// ships in the app shell, so the public deploy mirror still reveals nothing
+// about what any board is used for (see docs/spec.md §4a).
+//
+// `icon` is stored as {type, value} rather than a bare string so a future
+// custom-image icon can slot in as {type: "image", value: <path>} without
+// migrating already-encrypted board files on both devices.
+const LEADING_EMOJI_RE = /^(\p{Regional_Indicator}\p{Regional_Indicator}|\p{Extended_Pictographic}(\uFE0F|\p{Emoji_Modifier})*(\u200D\p{Extended_Pictographic}(\uFE0F|\p{Emoji_Modifier})*)*)\s*/u;
+
+// Returns {icon, text} for a raw string typed into any add/edit field.
+// `icon` is null when there's no leading emoji to take.
+function splitLeadingIcon(raw) {
+  const trimmed = (raw || "").trim();
+  const m = trimmed.match(LEADING_EMOJI_RE);
+  if (!m) return { icon: null, text: trimmed };
+  const rest = trimmed.slice(m[0].length).trim();
+  // An item that is *nothing but* an emoji keeps it as its text — promoting
+  // it to the icon would leave a labelless, unreadable row.
+  if (!rest) return { icon: null, text: trimmed };
+  return { icon: { type: "emoji", value: m[1] }, text: rest };
+}
+
+// Inverse of splitLeadingIcon, for prefilling an edit form: the icon comes
+// back as part of the text so it can be changed or removed with the same
+// keyboard that set it, with no extra field in the form.
+function textWithIcon(entity) {
+  return entity.icon && entity.icon.type === "emoji"
+    ? entity.icon.value + " " + entity.text
+    : entity.text;
+}
+
+// Parses one pasted line back into an item. This is the exact inverse of
+// markdownLine() below, so anything the Copy button produces can be pasted
+// straight back in — a plain "📌 Item text" list is just the case where every
+// optional part is absent.
+function parseImportLine(line) {
+  let rest = line.trim();
+  let done = false;
+
+  const box = rest.match(/^-\s*\[([ xX])\]\s*/);
+  if (box) {
+    done = box[1].toLowerCase() === "x";
+    rest = rest.slice(box[0].length);
+  }
+
+  let due_date = null;
+  let due_time = null;
+  const due = rest.match(/\s+@(\d{4}-\d{2}-\d{2})(?:T(\d{2}:\d{2}))?$/);
+  if (due) {
+    due_date = due[1];
+    due_time = due[2] || null;
+    rest = rest.slice(0, due.index);
+  }
+
+  const { icon, text } = splitLeadingIcon(rest);
+  return { text, icon, done, due_date, due_time };
+}
+
+// Turns a multi-line paste into a single "addMany" op. One op, not one per
+// line: pendingOps is flushed with a read-check-write Dropbox round trip per
+// op (see syncPending), so 30 separate adds would mean 30 serialized
+// download+upload cycles instead of one.
+function bulkAdd(lines, isNote) {
+  const parsed = lines.map(parseImportLine).filter((p) => p.text);
+  if (parsed.length === 0) return;
+
+  // Case-insensitive, against top-level items only — re-pasting an edited
+  // list should top it up, not duplicate it.
+  const existing = new Set(todos.map((t) => t.text.trim().toLowerCase()));
+  const fresh = parsed.filter((p) => !existing.has(p.text.toLowerCase()));
+  const skipped = parsed.length - fresh.length;
+
+  if (fresh.length === 0) {
+    toast("All " + parsed.length + " already on this list.");
+    return;
+  }
+
+  const boardName = currentBoard ? currentBoard.label : "this list";
+  const question = "Add " + fresh.length + " items to " + boardName + "?" +
+    (skipped > 0 ? "\n\n(" + skipped + " already on the list will be skipped.)" : "");
+  if (!confirm(question)) return;
+
+  // uuids/timestamps are generated up front so the op stays plain JSON and
+  // survives persistQueue()/loadPersistedQueue() and a later replay.
+  const now = new Date().toISOString();
+  const todosToAdd = fresh.map((p) => {
+    const item = isNote
+      ? { id: crypto.randomUUID(), type: "note", text: p.text, bold: false, created_at: now, updated_at: now }
+      : { id: crypto.randomUUID(), text: p.text, done: p.done, created_at: now, updated_at: now };
+    if (p.icon) item.icon = p.icon;
+    if (!isNote && p.due_date) {
+      item.due_date = p.due_date;
+      if (p.due_time) item.due_time = p.due_time;
+    }
+    return item;
+  });
+
+  applyEdit({ type: "addMany", todos: todosToAdd });
+  const ids = todosToAdd.map((t) => t.id);
+  toast("Added " + todosToAdd.length + " items.", {
+    label: "Undo",
+    onClick: () => applyEdit({ type: "removeIds", ids }),
+  });
+}
+
 function renderDaysBadge(entity) {
   if (!entity.due_date) return null;
   const { text, cls } = daysLeftLabel(entity.due_date, entity.due_time);
@@ -271,6 +378,13 @@ function renderRow(entity, { isSub, onToggle, onEditToggle, onRowClick, onDelete
     row.appendChild(check);
   }
 
+  if (entity.icon && entity.icon.type === "emoji") {
+    const icon = document.createElement("span");
+    icon.className = "todo-icon";
+    icon.textContent = entity.icon.value;
+    row.appendChild(icon);
+  }
+
   const text = document.createElement("span");
   text.className = "todo-text" + (entity.done ? " done" : "") + (entity.bold ? " bold" : "");
   text.textContent = entity.text;
@@ -333,8 +447,8 @@ function renderRow(entity, { isSub, onToggle, onEditToggle, onRowClick, onDelete
 function markdownLine(entity, indent) {
   const prefix = "\t".repeat(indent);
   const deadline = entity.due_date ? " @" + entity.due_date + (entity.due_time ? "T" + entity.due_time : "") : "";
-  if (entity.type === "note") return prefix + entity.text;
-  return prefix + "- [" + (entity.done ? "x" : " ") + "] " + entity.text + deadline;
+  if (entity.type === "note") return prefix + textWithIcon(entity);
+  return prefix + "- [" + (entity.done ? "x" : " ") + "] " + textWithIcon(entity) + deadline;
 }
 
 // Full Markdown-ish text for the Copy button: the entity's own line, plus
@@ -379,9 +493,14 @@ function renderAssignPanel(entity, onAssign) {
     const chip = document.createElement("button");
     chip.type = "button";
     chip.className = "assign-chip" + (entity.assigned_to === user.id ? " selected" : "");
-    chip.innerHTML =
-      '<span class="assignee-avatar" style="background:' + userColor(user) + '">' + userInitial(user) + "</span>" +
-      "<span>" + (user.name || "Unnamed") + "</span>";
+    const avatar = document.createElement("span");
+    avatar.className = "assignee-avatar";
+    avatar.style.background = userColor(user);
+    avatar.textContent = userInitial(user);
+    chip.appendChild(avatar);
+    const label = document.createElement("span");
+    label.textContent = user.name || "Unnamed";
+    chip.appendChild(label);
     chip.onclick = () => onAssign(user.id);
     panel.appendChild(chip);
   }
@@ -427,7 +546,7 @@ function renderEditForm(entity, onSave) {
   const textInput = document.createElement("input");
   textInput.type = "text";
   textInput.className = "edit-text";
-  textInput.value = entity.text;
+  textInput.value = textWithIcon(entity);
   textInput.required = true;
 
   const btnRow = document.createElement("div");
@@ -467,7 +586,7 @@ function renderNoteEditForm(entity, onSave) {
   const textInput = document.createElement("input");
   textInput.type = "text";
   textInput.className = "edit-text";
-  textInput.value = entity.text;
+  textInput.value = textWithIcon(entity);
   textInput.required = true;
 
   let bold = !!entity.bold;
@@ -1170,6 +1289,20 @@ function applyOp(list, op) {
     case "add":
       list.push(op.todo);
       break;
+    // Bulk paste-import. One op for the whole batch so it costs a single
+    // sync round trip; see bulkAdd.
+    case "addMany":
+      list.push(...op.todos);
+      break;
+    // Undo for "addMany" — by id rather than by count, so it still removes
+    // the right rows if anything else landed in between.
+    case "removeIds": {
+      const drop = new Set(op.ids);
+      for (let i = list.length - 1; i >= 0; i--) {
+        if (drop.has(list[i].id)) list.splice(i, 1);
+      }
+      break;
+    }
     case "toggle": {
       const t = list.find((x) => x.id === op.id);
       if (t) { t.done = !t.done; t.updated_at = op.now; }
@@ -1193,6 +1326,7 @@ function applyOp(list, op) {
       const t = list.find((x) => x.id === op.id);
       if (!t) break;
       t.text = op.patch.text;
+      if ("icon" in op.patch) { if (op.patch.icon) t.icon = op.patch.icon; else delete t.icon; }
       if (op.patch.bold !== undefined) t.bold = op.patch.bold;
       if (op.patch.due_date) {
         t.due_date = op.patch.due_date;
@@ -1247,6 +1381,7 @@ function applyOp(list, op) {
       const child = parent && parent.children && parent.children.find((c) => c.id === op.childId);
       if (!child) break;
       child.text = op.patch.text;
+      if ("icon" in op.patch) { if (op.patch.icon) child.icon = op.patch.icon; else delete child.icon; }
       if (op.patch.bold !== undefined) child.bold = op.patch.bold;
       if (op.patch.due_date) {
         child.due_date = op.patch.due_date;
@@ -1424,12 +1559,13 @@ async function syncPending() {
 // noteAddMode/addSubNote) — top-level items support it too via the add
 // bar's "N" toggle.
 function addTodo(text, isNote) {
-  const trimmed = text.trim();
+  const { icon, text: trimmed } = splitLeadingIcon(text);
   if (!trimmed) return;
   const now = new Date().toISOString();
   const todo = isNote
     ? { id: crypto.randomUUID(), type: "note", text: trimmed, bold: false, created_at: now, updated_at: now }
     : { id: crypto.randomUUID(), text: trimmed, done: false, created_at: now, updated_at: now };
+  if (icon) todo.icon = icon;
   applyEdit({ type: "add", todo });
 }
 
@@ -1453,10 +1589,12 @@ function deleteTodo(id) {
 // Sub-todos are one level deep only: `children` lives on a top-level todo,
 // and child todos never have children of their own.
 function addSubTodo(parentId, text) {
-  const trimmed = text.trim();
+  const { icon, text: trimmed } = splitLeadingIcon(text);
   if (!trimmed) return;
   const now = new Date().toISOString();
-  applyEdit({ type: "addSub", parentId, now, todo: { id: crypto.randomUUID(), text: trimmed, done: false, created_at: now, updated_at: now } });
+  const todo = { id: crypto.randomUUID(), text: trimmed, done: false, created_at: now, updated_at: now };
+  if (icon) todo.icon = icon;
+  applyEdit({ type: "addSub", parentId, now, todo });
 }
 
 // Wraps a top-level todo in a brand-new parent todo, demoting the original
@@ -1464,7 +1602,7 @@ function addSubTodo(parentId, text) {
 // children of their own), so if the item being wrapped already has
 // sub-items, those get dropped — confirm with the user before doing that.
 function promoteToSuper(id, text) {
-  const trimmed = text.trim();
+  const { icon, text: trimmed } = splitLeadingIcon(text);
   if (!trimmed) return;
   const todo = todos.find((t) => t.id === id);
   if (!todo) return;
@@ -1479,7 +1617,10 @@ function promoteToSuper(id, text) {
     type: "wrapSuper",
     id,
     now,
-    newParent: { id: crypto.randomUUID(), text: trimmed, done: false, created_at: now, updated_at: now },
+    newParent: Object.assign(
+      { id: crypto.randomUUID(), text: trimmed, done: false, created_at: now, updated_at: now },
+      icon ? { icon } : null
+    ),
   });
 }
 
@@ -1502,10 +1643,12 @@ function reorderSubTodo(parentId, childId, toIndex) {
 // separators/remarks; they reuse the "addSub"/"editSub" op types via a
 // `type: "note"` tag on the child object, so no sync/op-log changes needed.
 function addSubNote(parentId, text) {
-  const trimmed = text.trim();
+  const { icon, text: trimmed } = splitLeadingIcon(text);
   if (!trimmed) return;
   const now = new Date().toISOString();
-  applyEdit({ type: "addSub", parentId, now, todo: { id: crypto.randomUUID(), type: "note", text: trimmed, bold: false, created_at: now, updated_at: now } });
+  const todo = { id: crypto.randomUUID(), type: "note", text: trimmed, bold: false, created_at: now, updated_at: now };
+  if (icon) todo.icon = icon;
+  applyEdit({ type: "addSub", parentId, now, todo });
 }
 
 function deleteSubTodo(parentId, childId) {
@@ -1518,24 +1661,26 @@ function deleteSubTodo(parentId, childId) {
 // passes only the fields its form has, and applyOp's "edit" case only
 // touches a field when the patch carries it.
 function editTodo(id, patch) {
-  const trimmed = (patch.text || "").trim();
+  const { icon, text: trimmed } = splitLeadingIcon(patch.text);
   if (!trimmed) return;
-  const opPatch = { text: trimmed };
+  // `icon` is always sent (null included) so deleting the emoji from the
+  // text field is what clears the icon — see applyOp's "edit" case.
+  const opPatch = { text: trimmed, icon };
   if (patch.bold !== undefined) opPatch.bold = !!patch.bold;
   if ("due_date" in patch) { opPatch.due_date = patch.due_date; opPatch.due_time = patch.due_time; }
   applyEdit({ type: "edit", id, now: new Date().toISOString(), patch: opPatch });
 }
 
 function editSubTodo(parentId, childId, patch) {
-  const trimmed = (patch.text || "").trim();
+  const { icon, text: trimmed } = splitLeadingIcon(patch.text);
   if (!trimmed) return;
-  applyEdit({ type: "editSub", parentId, childId, now: new Date().toISOString(), patch: { text: trimmed, due_date: patch.due_date, due_time: patch.due_time } });
+  applyEdit({ type: "editSub", parentId, childId, now: new Date().toISOString(), patch: { text: trimmed, icon, due_date: patch.due_date, due_time: patch.due_time } });
 }
 
 function editSubNote(parentId, childId, patch) {
-  const trimmed = (patch.text || "").trim();
+  const { icon, text: trimmed } = splitLeadingIcon(patch.text);
   if (!trimmed) return;
-  applyEdit({ type: "editSub", parentId, childId, now: new Date().toISOString(), patch: { text: trimmed, bold: !!patch.bold } });
+  applyEdit({ type: "editSub", parentId, childId, now: new Date().toISOString(), patch: { text: trimmed, icon, bold: !!patch.bold } });
 }
 
 // Deletes immediately (swipe has no separate confirm step) but snapshots the
@@ -1673,6 +1818,17 @@ function wireEvents() {
     if (e.key !== "Enter") return;
     e.preventDefault();
     submitAdd();
+  });
+  // A multi-line paste is read straight off the clipboard, because this is a
+  // single-line <input>: the browser strips the newlines before the value is
+  // readable, which would silently collapse a 30-line list into one item.
+  // Anything shorter than two lines falls through to an ordinary paste.
+  addInput.addEventListener("paste", (e) => {
+    const raw = (e.clipboardData || window.clipboardData).getData("text");
+    const lines = raw.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    if (lines.length < 2) return;
+    e.preventDefault();
+    bulkAdd(lines, addIsNote);
   });
   el("addForm").onsubmit = (e) => {
     e.preventDefault();
