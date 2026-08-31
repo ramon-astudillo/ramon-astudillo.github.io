@@ -69,30 +69,46 @@
   .tab-bar { display: flex; gap: 4px; padding: 0 12px 8px; overflow-x: auto; }
   .tab-btn {
     background: none; border: none; border-radius: 10px; padding: 8px 12px;
-    color: var(--muted); cursor: pointer; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    font-size: 1.25rem; line-height: 1; min-width: 40px;
   }
-  .tab-btn svg { width: 20px; height: 20px; stroke: currentColor; fill: none; }
-  .tab-btn.active { background: var(--card); color: var(--accent); }
+  .tab-btn.active { background: var(--card); }
+  /* The active tab is marked by its filled background plus a full-opacity
+     glyph — an emoji can't be tinted with `color` the way the old stroked
+     SVG icons could, so inactive ones are dimmed instead. */
+  .tab-btn:not(.active) { opacity: 0.45; }
   .manage-boards-list { margin: 4px 0 10px; }
-  .manage-board-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; }
-  .manage-board-row svg { width: 18px; height: 18px; stroke: var(--muted); fill: none; flex: none; }
-  .manage-board-row span { flex: 1; font-size: 0.9rem; }
-  .manage-board-row button { background: none; border: none; color: var(--muted); cursor: pointer; padding: 4px; }
-  .icon-picker { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
-  .icon-picker button {
-    background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px;
-    cursor: pointer; display: flex; color: var(--muted);
+  .manage-board-row {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 12px 4px; background: none; border: none; border-bottom: 1px solid var(--border);
+    color: var(--text); font-size: 0.9rem; text-align: left; cursor: pointer;
   }
-  .icon-picker button.selected { border-color: var(--accent); color: var(--accent); }
-  .icon-picker svg { width: 18px; height: 18px; stroke: currentColor; fill: none; }
+  .manage-board-row:active { background: var(--bg); }
+  .manage-board-row .board-emoji { font-size: 1.2rem; line-height: 1; flex: none; }
+  .manage-board-row .board-label { flex: 1; }
+  .manage-board-row .board-chevron { color: var(--muted); }
+  .add-board-row { color: var(--accent); border-bottom: none; }
+  /* Grid rather than the old flex row: 32 emoji wrap into tidy columns and
+     stay a comfortable tap target on a phone. */
+  .emoji-picker { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; margin: 8px 0 4px; }
+  .emoji-picker button {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+    padding: 6px 0; font-size: 1.15rem; line-height: 1.3; cursor: pointer;
+  }
+  .emoji-picker button.selected { border-color: var(--accent); background: var(--card); }
+  .board-page-title { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; font-size: 1.05rem; }
+  .board-page-title button {
+    background: none; border: none; color: var(--accent); font-size: 1rem;
+    padding: 4px 6px 4px 0; cursor: pointer;
+  }
+  .settings-sheet .field-label { display: block; font-size: 0.8rem; color: var(--muted); margin: 14px 0 6px; }
+  .settings-sheet .danger-note { font-size: 0.78rem; color: var(--muted); margin: 6px 0 0; }
   .color-picker { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0; }
   .color-picker button {
     width: 26px; height: 26px; border-radius: 50%; border: 2px solid transparent;
     cursor: pointer; padding: 0;
   }
   .color-picker button.selected { border-color: var(--text); }
-  .add-board-form { display: flex; flex-direction: column; gap: 8px; padding-top: 8px; border-top: 1px solid var(--border); margin-top: 4px; }
-  .add-board-form input[type=text] { padding: 8px 10px; font-size: 0.85rem; border-radius: 8px; }
   .icon-btn {
     background: none; border: none; font-size: 1.3rem; padding: 8px; line-height: 1;
     color: var(--muted); cursor: pointer;
@@ -391,47 +407,74 @@
 
   <div class="settings-panel" id="settingsPanel">
     <div class="settings-sheet">
-      <h2>Settings</h2>
-      <div class="row">
-        <span>Appearance</span>
-        <select id="themeSelect">
-          <option value="system">System</option>
-          <option value="light">Light</option>
-          <option value="dark">Dark</option>
-        </select>
-      </div>
-      <form class="row identity-row" id="userNameForm">
-        <span class="identity-name-line">
-          <span>Your name</span>
-          <input type="text" id="userNameInput" placeholder="Optional" autocomplete="off">
-        </span>
-        <div class="color-picker" id="userColorPicker"></div>
-        <span class="row-actions">
-          <button class="secondary" type="submit">Save</button>
-        </span>
-      </form>
-      <div class="row"><span>Last synced</span><span id="settingsSyncTime">—</span></div>
-      <div class="row"><span id="appVersionRow">App version</span><button class="secondary" id="forceUpdateBtn">Check for update</button></div>
-      <details class="advanced-settings">
-        <summary>Advanced</summary>
-        <div class="row"><span>Dropbox account</span><button class="secondary danger" id="disconnectBtn">Disconnect</button></div>
-        <div class="row"><span>Remembered passphrase</span><button class="secondary" id="forgetKeyBtn">Forget on this device</button></div>
-      </details>
-      <h2 style="margin-top:16px;">Lists</h2>
-      <div class="manage-boards-list" id="manageBoardsList"></div>
-      <form class="add-board-form" id="addBoardForm">
-        <input type="text" id="addBoardName" placeholder="New list name..." autocomplete="off" required>
-        <div class="icon-picker" id="addBoardIconPicker"></div>
-        <button class="secondary" type="submit">Add list</button>
-      </form>
-      <h2 style="margin-top:16px;">Import items</h2>
-      <form class="import-form" id="importForm">
-        <textarea id="importText" placeholder="Paste a list here, one item per line..."></textarea>
-        <span class="import-hint">Adds to the list you currently have open. A leading emoji becomes the item's icon.</span>
-        <button class="secondary" type="submit">Import</button>
-      </form>
+      <!-- Two views inside the one sheet: the general settings (below) and a
+           per-list page, opened by tapping a list under "Lists". Everything
+           that only concerns a single list lives on that second page, so this
+           first one stays short. -->
+      <div id="settingsMain">
+        <h2>Settings</h2>
+        <div class="row">
+          <span>Appearance</span>
+          <select id="themeSelect">
+            <option value="system">System</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </div>
+        <form class="row identity-row" id="userNameForm">
+          <span class="identity-name-line">
+            <span>Your name</span>
+            <input type="text" id="userNameInput" placeholder="Optional" autocomplete="off">
+          </span>
+          <div class="color-picker" id="userColorPicker"></div>
+          <span class="row-actions">
+            <button class="secondary" type="submit">Save</button>
+          </span>
+        </form>
+        <div class="row"><span>Last synced</span><span id="settingsSyncTime">—</span></div>
+        <div class="row"><span id="appVersionRow">App version</span><button class="secondary" id="forceUpdateBtn">Check for update</button></div>
+        <details class="advanced-settings">
+          <summary>Advanced</summary>
+          <div class="row"><span>Dropbox account</span><button class="secondary danger" id="disconnectBtn">Disconnect</button></div>
+          <div class="row"><span>Remembered passphrase</span><button class="secondary" id="forgetKeyBtn">Forget on this device</button></div>
+        </details>
+        <h2 style="margin-top:16px;">Lists</h2>
+        <div class="manage-boards-list" id="manageBoardsList"></div>
 
-      <div class="close-row"><button id="closeSettingsBtn">Close</button></div>
+        <div class="close-row"><button id="closeSettingsBtn">Close</button></div>
+      </div>
+
+      <div id="settingsBoard" hidden>
+        <h2 class="board-page-title">
+          <button type="button" id="boardPageBackBtn" title="Back to settings">&#8592;</button>
+          <span id="boardPageHeading">List</span>
+        </h2>
+
+        <label class="field-label" for="boardTitleInput">Title</label>
+        <input type="text" id="boardTitleInput" autocomplete="off">
+
+        <span class="field-label">Icon</span>
+        <div class="emoji-picker" id="boardIconPicker"></div>
+
+        <span class="field-label">Import items</span>
+        <form class="import-form" id="importForm">
+          <textarea id="importText" placeholder="Paste a list here, one item per line..."></textarea>
+          <span class="import-hint">Adds the lines to this list. A leading emoji becomes the item's icon.</span>
+          <button class="secondary" type="submit">Import</button>
+        </form>
+
+        <span class="field-label">Export</span>
+        <div class="row"><span>Copy this list as text</span><button class="secondary" id="boardExportBtn">Copy</button></div>
+
+        <span class="field-label">Danger zone</span>
+        <div class="row">
+          <span>Delete this list</span>
+          <button class="secondary danger" id="boardDeleteBtn">Delete</button>
+        </div>
+        <p class="danger-note">Deleting a list removes it and all of its items for everyone sharing this passphrase. This cannot be undone.</p>
+
+        <div class="close-row"><button id="boardPageDoneBtn">Done</button></div>
+      </div>
     </div>
   </div>
 

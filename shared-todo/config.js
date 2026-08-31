@@ -25,7 +25,7 @@ const CONFIG = {
   // Bump alongside sw.js's CACHE_NAME suffix on every deploy that changes
   // app-shell files, so Settings can show which version a device is
   // actually running (useful for confirming an update landed).
-  APP_VERSION: "35",
+  APP_VERSION: "36",
 
   // Preset swatches for a device's identity color (see Settings → Your
   // name), used to tint the assignee avatar shown on an assigned todo.
@@ -33,15 +33,23 @@ const CONFIG = {
   // with similar names shouldn't risk landing on similar colors.
   USER_COLORS: ["#e53935", "#fb8c00", "#c0a000", "#43a047", "#00acc1", "#1e88e5", "#5e35b1", "#d81b60"],
 
-  // A small, generic, public icon set. Boards reference one of these keys
-  // from the (private, encrypted) manifest — the icon glyphs themselves
-  // carry no meaning about what any given board is used for.
-  ICONS: {
-    list: '<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>',
-    check: '<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><polyline points="8 12 11 15 16 9"></polyline></svg>',
-    star: '<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>',
-    flag: '<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>',
-    bell: '<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>',
-    book: '<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>',
+  // A small, generic, public emoji palette offered when picking a list's
+  // icon (Settings -> a list -> Icon). Which one a list actually uses lives
+  // only in the encrypted manifest, and the palette itself is deliberately
+  // broad and everyday, so shipping it in public code says nothing about
+  // what any board is for -- the same reasoning as the icon set it replaced.
+  BOARD_EMOJI: [
+    "\u{1F4CB}", "\u2705", "\u2B50", "\u{1F6A9}", "\u{1F514}", "\u{1F4D7}", "\u{1F4DD}", "\u{1F5C2}\uFE0F",
+    "\u{1F6D2}", "\u{1F3E0}", "\u{1F9F3}", "\u2708\uFE0F", "\u{1F381}", "\u{1F389}", "\u{1F4BC}", "\u{1F4A1}",
+    "\u{1F527}", "\u{1F9F9}", "\u{1F37D}\uFE0F", "\u2615", "\u{1F43E}", "\u{1F331}", "\u{1F3CB}\uFE0F", "\u{1F3B5}",
+    "\u{1F3AC}", "\u{1F4DA}", "\u{1F4B0}", "\u{1FA7A}", "\u{1F697}", "\u{1F30D}", "\u2600\uFE0F", "\u2764\uFE0F",
+  ],
+
+  // Icons of pre-emoji manifests were keys into a small SVG set; map them
+  // so a board written by an older version still shows something sensible
+  // without needing a migration write to the encrypted manifest.
+  LEGACY_BOARD_ICONS: {
+    list: "\u{1F4CB}", check: "\u2705", star: "\u2B50",
+    flag: "\u{1F6A9}", bell: "\u{1F514}", book: "\u{1F4D7}",
   },
 };

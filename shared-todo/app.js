@@ -1085,13 +1085,21 @@ async function bootstrapBoards(allowOfflineFallback) {
   renderTabs();
 }
 
+// A board's stored `icon` is an emoji, but manifests written by earlier
+// versions hold a key into the SVG set that replaced — map those on read so
+// an old board still shows something sensible with no migration write.
+function boardEmoji(board) {
+  const icon = board && board.icon;
+  return CONFIG.LEGACY_BOARD_ICONS[icon] || icon || CONFIG.BOARD_EMOJI[0];
+}
+
 function renderTabs() {
   const bar = el("tabBar");
   bar.innerHTML = "";
   for (const b of boards) {
     const btn = document.createElement("button");
     btn.className = "tab-btn" + (currentBoard && b.id === currentBoard.id ? " active" : "");
-    btn.innerHTML = CONFIG.ICONS[b.icon] || CONFIG.ICONS.list;
+    btn.textContent = boardEmoji(b);
     btn.title = b.label;
     btn.onclick = () => switchBoard(b.id);
     bar.appendChild(btn);
@@ -1112,32 +1120,14 @@ async function switchBoard(id) {
   await loadAndRender(true);
 }
 
-function iconPickerHtml(selected) {
-  return Object.keys(CONFIG.ICONS).map((key) =>
-    '<button type="button" data-icon="' + key + '" class="' + (key === selected ? "selected" : "") + '">' + CONFIG.ICONS[key] + '</button>'
-  ).join("");
-}
-
-function wireIconPicker(container, initialSelected) {
-  container.innerHTML = iconPickerHtml(initialSelected);
-  let selected = initialSelected;
-  for (const btn of container.querySelectorAll("button")) {
-    btn.onclick = () => {
-      selected = btn.dataset.icon;
-      for (const b of container.querySelectorAll("button")) b.classList.toggle("selected", b === btn);
-    };
-  }
-  return () => selected;
-}
-
 function colorPickerHtml(selected) {
   return CONFIG.USER_COLORS.map((c) =>
     '<button type="button" data-color="' + c + '" class="' + (c === selected ? "selected" : "") + '" style="background:' + c + '"></button>'
   ).join("");
 }
 
-// Same selected-getter pattern as wireIconPicker, for the identity color
-// swatches in Settings.
+// Selected-getter pattern: returns a closure giving the currently picked
+// value, for the identity color swatches in Settings.
 function wireColorPicker(container, initialSelected) {
   container.innerHTML = colorPickerHtml(initialSelected);
   let selected = initialSelected;
@@ -1150,65 +1140,130 @@ function wireColorPicker(container, initialSelected) {
   return () => selected;
 }
 
-const expandedBoardIconPickers = new Set(); // board IDs whose icon picker is open (local UI state, not synced)
-
+// Settings -> "Lists": just a list of the boards. Everything that only
+// concerns one board (title, icon, import, export, delete) lives on the
+// per-board page below, so this stays a single tap-through row each.
 function renderManageBoards() {
   const list = el("manageBoardsList");
   list.innerHTML = "";
   for (const b of boards) {
-    const row = document.createElement("div");
+    const row = document.createElement("button");
+    row.type = "button";
     row.className = "manage-board-row";
 
-    const iconBtn = document.createElement("button");
-    iconBtn.type = "button";
-    iconBtn.title = "Change icon";
-    iconBtn.style.cssText = "background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:6px; cursor:pointer; display:flex; color:var(--muted);";
-    iconBtn.innerHTML = CONFIG.ICONS[b.icon] || CONFIG.ICONS.list;
-    iconBtn.onclick = () => {
-      expandedBoardIconPickers.has(b.id) ? expandedBoardIconPickers.delete(b.id) : expandedBoardIconPickers.add(b.id);
-      renderManageBoards();
-    };
+    const emoji = document.createElement("span");
+    emoji.className = "board-emoji";
+    emoji.textContent = boardEmoji(b);
 
-    const nameInput = document.createElement("input");
-    nameInput.type = "text";
-    nameInput.value = b.label;
-    nameInput.style.cssText = "flex:1; border:none; background:none; font-size:0.9rem; color:var(--text); padding:2px;";
-    nameInput.onchange = () => renameBoard(b.id, nameInput.value, b.icon);
+    const label = document.createElement("span");
+    label.className = "board-label";
+    label.textContent = b.label;
 
-    const delBtn = document.createElement("button");
-    delBtn.title = "Delete list";
-    delBtn.textContent = "✕";
-    delBtn.onclick = () => deleteBoard(b.id);
+    const chevron = document.createElement("span");
+    chevron.className = "board-chevron";
+    chevron.textContent = "\u203a";
 
-    row.append(iconBtn, nameInput, delBtn);
+    row.append(emoji, label, chevron);
+    row.onclick = () => openBoardPage(b.id);
     list.appendChild(row);
+  }
 
-    if (expandedBoardIconPickers.has(b.id)) {
-      const picker = document.createElement("div");
-      picker.className = "icon-picker";
-      picker.style.marginLeft = "26px";
-      picker.innerHTML = iconPickerHtml(b.icon);
-      for (const btn of picker.querySelectorAll("button")) {
-        btn.onclick = () => {
-          expandedBoardIconPickers.delete(b.id);
-          renameBoard(b.id, b.label, btn.dataset.icon);
-          renderManageBoards();
-        };
-      }
-      list.appendChild(picker);
-    }
+  const addRow = document.createElement("button");
+  addRow.type = "button";
+  addRow.className = "manage-board-row add-board-row";
+  addRow.textContent = "+ New list";
+  addRow.onclick = () => addBoard();
+  list.appendChild(addRow);
+}
+
+// --- Per-list settings page ------------------------------------------
+//
+// A second view inside the Settings sheet (see index.html), shown for one
+// board at a time. It edits the manifest only — except Import, which routes
+// through the normal add path and therefore switches to the board first.
+
+let boardPageId = null; // board whose page is open, or null for the main view
+
+function openBoardPage(id) {
+  const board = boards.find((b) => b.id === id);
+  if (!board) return;
+  boardPageId = id;
+  el("boardPageHeading").textContent = board.label;
+  el("boardTitleInput").value = board.label;
+  el("importText").value = "";
+  renderBoardIconPicker();
+  el("settingsMain").hidden = true;
+  el("settingsBoard").hidden = false;
+}
+
+function closeBoardPage() {
+  boardPageId = null;
+  el("settingsBoard").hidden = true;
+  el("settingsMain").hidden = false;
+  renderManageBoards();
+}
+
+function renderBoardIconPicker() {
+  const board = boards.find((b) => b.id === boardPageId);
+  const picker = el("boardIconPicker");
+  picker.innerHTML = "";
+  if (!board) return;
+  const current = boardEmoji(board);
+  for (const emoji of CONFIG.BOARD_EMOJI) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = emoji === current ? "selected" : "";
+    btn.textContent = emoji;
+    btn.onclick = async () => {
+      await renameBoard(board.id, board.label, emoji);
+      renderBoardIconPicker();
+    };
+    picker.appendChild(btn);
   }
 }
 
-async function addBoard(label, icon) {
-  const trimmed = label.trim();
-  if (!trimmed) return;
+// Markdown-ish dump of a whole board, same per-item format as the row Copy
+// button. The open board is exported from memory so unsynced edits are
+// included; any other board is fetched and decrypted on demand.
+async function exportBoard(id) {
+  const board = boards.find((b) => b.id === id);
+  if (!board) return;
+  const entities = currentBoard && currentBoard.id === id
+    ? todos
+    : (await fetchBoardDoc(board)).todos;
+  const text = entities.map((t) => entityToMarkdown(t)).join("\n");
+  if (!navigator.clipboard) {
+    toast("Clipboard not available in this browser.");
+    return;
+  }
+  navigator.clipboard.writeText(text).then(
+    () => toast(entities.length + " items copied to clipboard."),
+    () => toast("Couldn't copy — clipboard access denied.")
+  );
+}
+
+async function fetchBoardDoc(board) {
+  const text = await DropboxFile.download(board.file);
+  if (text === null) return emptyTodoDoc();
+  return await decryptPayload(cryptoKey, text);
+}
+
+// New lists are created with a placeholder name and the default icon and
+// then opened for editing, rather than asking for both up front — one tap
+// to create, and the title/icon controls are the same ones used later.
+async function addBoard() {
   const manifest = await fetchManifest() || emptyManifest();
   const id = crypto.randomUUID();
-  manifest.boards.push({ id, label: trimmed, icon, file: "/board-" + id + ".json" });
+  manifest.boards.push({
+    id,
+    label: "New list",
+    icon: CONFIG.BOARD_EMOJI[0],
+    file: "/board-" + id + ".json",
+  });
   await saveManifest(manifest);
   renderTabs();
   renderManageBoards();
+  openBoardPage(id);
 }
 
 async function renameBoard(id, label, icon) {
@@ -1225,6 +1280,7 @@ async function renameBoard(id, label, icon) {
     currentBoard.icon = icon;
     el("headerTitle").textContent = trimmed;
   }
+  if (boardPageId === id) el("boardPageHeading").textContent = trimmed;
   renderTabs();
 }
 
@@ -1265,10 +1321,15 @@ async function deleteBoard(id) {
     toast("Can't delete the last list.");
     return;
   }
-  if (!confirm("Delete this list? Its items will no longer be reachable from here.")) return;
+  const board = boards.find((b) => b.id === id);
+  const warning = "Delete \u201c" + (board ? board.label : "this list") +
+    "\u201d and all of its items, for everyone sharing this passphrase?\n\n" +
+    "This cannot be undone.";
+  if (!confirm(warning)) return;
   const manifest = await fetchManifest() || emptyManifest();
   manifest.boards = manifest.boards.filter((b) => b.id !== id);
   await saveManifest(manifest);
+  if (boardPageId === id) closeBoardPage();
   renderManageBoards();
   renderTabs();
   if (currentBoard && currentBoard.id === id) {
@@ -1844,12 +1905,9 @@ function wireEvents() {
     else loadAndRender(true);
   };
 
-  let getAddBoardIcon = () => "list";
   let getUserColor = () => CONFIG.USER_COLORS[0];
   el("settingsBtn").onclick = () => {
-    renderManageBoards();
-    el("addBoardName").value = "";
-    getAddBoardIcon = wireIconPicker(el("addBoardIconPicker"), "list");
+    closeBoardPage(); // always open on the main view, whatever was last shown
     const me = users.find((u) => u.id === deviceId);
     el("userNameInput").value = (me && me.name) || "";
     getUserColor = wireColorPicker(el("userColorPicker"), (me && me.color) || CONFIG.USER_COLORS[0]);
@@ -1866,23 +1924,39 @@ function wireEvents() {
     if (e.target === el("settingsPanel")) el("settingsPanel").classList.remove("open");
   };
 
+  el("boardPageBackBtn").onclick = () => closeBoardPage();
+  el("boardPageDoneBtn").onclick = () => {
+    closeBoardPage();
+    el("settingsPanel").classList.remove("open");
+  };
+
+  // Committed on blur/Enter rather than with a Save button — the icon
+  // swatches save on tap too, so the page has no "unsaved" state at all.
+  el("boardTitleInput").onchange = () => {
+    const board = boards.find((b) => b.id === boardPageId);
+    if (board) renameBoard(board.id, el("boardTitleInput").value, board.icon);
+  };
+
+  el("boardExportBtn").onclick = () => exportBoard(boardPageId);
+  el("boardDeleteBtn").onclick = () => deleteBoard(boardPageId);
+
   // Visible counterpart to the add-bar paste shortcut. A <textarea> keeps its
   // newlines natively, so this path needs no clipboard interception and works
   // the same on desktop — and unlike the paste gesture, it is discoverable.
-  el("importForm").onsubmit = (e) => {
+  el("importForm").onsubmit = async (e) => {
     e.preventDefault();
     const lines = el("importText").value.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
     if (lines.length === 0) return;
+    // bulkAdd works on the open board, so import into any other one has to
+    // switch to it first — which is what the user wants to be looking at
+    // once the items land anyway.
+    const targetId = boardPageId;
     // Close first: bulkAdd confirms, then renders the result behind this sheet.
+    closeBoardPage();
     el("settingsPanel").classList.remove("open");
     el("importText").value = "";
+    if (targetId) await switchBoard(targetId);
     bulkAdd(lines, false);
-  };
-
-  el("addBoardForm").onsubmit = (e) => {
-    e.preventDefault();
-    addBoard(el("addBoardName").value, getAddBoardIcon());
-    el("addBoardName").value = "";
   };
 
   el("disconnectBtn").onclick = () => {
