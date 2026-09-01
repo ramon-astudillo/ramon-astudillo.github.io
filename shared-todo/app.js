@@ -326,22 +326,21 @@ function earliestChildDeadline(entity) {
   });
 }
 
-const EDIT_PENCIL_SVG = '<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>';
 const TRASH_BIN_SVG = '<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>';
 const PERSON_SVG = '<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>';
 const DRAG_HANDLE_SVG = '<svg viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.5"></circle><circle cx="15" cy="6" r="1.5"></circle><circle cx="9" cy="12" r="1.5"></circle><circle cx="15" cy="12" r="1.5"></circle><circle cx="9" cy="18" r="1.5"></circle><circle cx="15" cy="18" r="1.5"></circle></svg>';
 
 // Builds the swipeable row (drag handle + radio + text + days badge +
-// assignee avatar + edit icon) shared by top-level todos and sub-todos. The
-// edit icon always toggles the rename/date panel; `onRowClick` (top-level
-// only) toggles the sub-todo list separately — the two are independent so
-// opening one doesn't force the other open too. Swiping left past a
-// threshold deletes the row; swiping right (only if `onAssignOpen` is
-// passed) opens the assignee picker (see attachSwipeGestures). Returns
+// assignee avatar) shared by top-level todos and sub-todos. Long-pressing
+// the row opens the rename/date panel — there is no edit icon; `onRowClick`
+// (top-level only) toggles the sub-todo list separately, and the two are
+// independent so opening one doesn't force the other open too. Swiping left
+// past a threshold deletes the row; swiping right (only if `onAssignOpen`
+// is passed) opens the assignee picker (see attachSwipeGestures). Returns
 // { el, handle } rather than just the row element so callers can wire the
 // handle to attachDragReorder against the outer <li>, which drag needs to
 // translate as a whole (see renderTodoItem / renderChildrenSection).
-function renderRow(entity, { isSub, onToggle, onEditToggle, onRowClick, onDelete, onAssignOpen, showEditBtn = true }) {
+function renderRow(entity, { isSub, onToggle, onEditToggle, onRowClick, onDelete, onAssignOpen }) {
   const wrap = document.createElement("div");
   wrap.className = "swipe-wrap";
 
@@ -423,20 +422,22 @@ function renderRow(entity, { isSub, onToggle, onEditToggle, onRowClick, onDelete
     row.appendChild(avatar);
   }
 
-  if (showEditBtn) {
-    const editBtn = document.createElement("button");
-    editBtn.className = "todo-edit";
-    editBtn.title = "Edit";
-    editBtn.innerHTML = EDIT_PENCIL_SVG;
-    editBtn.onclick = (e) => { e.stopPropagation(); onEditToggle(); };
-    row.appendChild(editBtn);
-  }
-
   if (onRowClick) row.onclick = onRowClick;
   else row.classList.add("no-row-click");
 
+  // Long press is a *touch* idiom; a right click is the desktop equivalent,
+  // and preventDefault also keeps the native menu away on the platforms that
+  // raise contextmenu from the long press itself (Android Chrome does — the
+  // dedupe in triggerGestureEdit is what stops that opening the panel twice).
+  // A genuine right click (button 2) is followed by no click event, so it
+  // must not arm the swallow — that would eat the user's next real tap.
+  row.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+    triggerGestureEdit(onEditToggle, e.button !== 2);
+  });
+
   wrap.appendChild(row);
-  attachSwipeGestures(row, { onDelete, onAssignOpen, deleteBg, assignBg });
+  attachSwipeGestures(row, { onDelete, onAssignOpen, onLongPress: onEditToggle, deleteBg, assignBg });
   return { el: wrap, handle };
 }
 
@@ -661,9 +662,6 @@ function renderTodoItem(todo) {
     onRowClick: () => { shownChildrenIds.has(todo.id) ? shownChildrenIds.delete(todo.id) : shownChildrenIds.add(todo.id); render(); },
     onDelete: () => deleteTodoWithUndo(todo.id),
     onAssignOpen: () => { assigningIds.has(todo.id) ? assigningIds.delete(todo.id) : assigningIds.add(todo.id); render(); },
-    // Top-level rows only show the edit pencil once tapped open — sub-items
-    // keep it always visible (renderChildrenSection doesn't pass this).
-    showEditBtn: shownChildrenIds.has(todo.id),
   });
   wrap.appendChild(rowEl);
   attachDragReorder(handle, wrap, () => Array.from(el("todoList").children), (fromIndex, toIndex) => reorderTodo(todo.id, toIndex));
@@ -790,15 +788,66 @@ function renderChildrenSection(todo) {
 // A right swipe past the same threshold instead opens the assignee picker
 // (see onAssignOpen/renderAssignPanel) and snaps back to place, since picking
 // a person is a second step, not something the swipe alone can express.
-// Gesture state is closure-local per row, not shared module state.
+// A press held past LONG_PRESS_MS without moving instead opens the row's
+// rename/date panel (`onLongPress`) — the gesture that replaced the old edit
+// pencil. It shares this function's pointer bookkeeping rather than getting
+// listeners of its own, because the two must agree on one thing: any move
+// past the deadzone is a swipe or a scroll, never an edit.
+// Gesture state is closure-local per row, not shared module state — except
+// the long press's dedupe/click-swallow, which has to outlive the row it
+// started on (see triggerGestureEdit).
 const SWIPE_DEADZONE = 8;
 const SWIPE_THRESHOLD = 80;
+// Deliberately under the ~500ms most platforms use, because iOS Safari fires
+// pointercancel more eagerly than Android and a longer hold there is more
+// likely to be swallowed before it completes.
+const LONG_PRESS_MS = 450;
+// Only has to outlast the gap between the timer firing and the platform's own
+// contextmenu landing off the same press — not the press itself, which may be
+// held for seconds (the synthesized click is handled separately below).
+const LONG_PRESS_DEDUPE_MS = 400;
+let lastGestureEditAt = 0;
 
-function attachSwipeGestures(rowEl, { onDelete, onAssignOpen, deleteBg, assignBg }) {
+// Single entry point for "open this row's edit panel by gesture", shared by
+// the held-press timer and the contextmenu handler. Both can fire for one
+// press on Android (the platform raises contextmenu off the same long press,
+// and which lands first isn't guaranteed), so the second one through the door
+// has to be dropped — otherwise it toggles the panel straight closed again.
+//
+// The release then synthesizes a click, which would toggle the sub-todo list
+// on top of the edit panel we just opened. That can't be guarded on the row:
+// onEditToggle re-renders the list, so by the time the click is dispatched
+// this row is detached and the click lands on its freshly built replacement.
+// Hence a one-shot capture listener on the document, which outlives the
+// re-render — and no time window, since a press held for five seconds still
+// produces its click on release.
+function triggerGestureEdit(onEditToggle, swallowClick) {
+  const now = Date.now();
+  if (now - lastGestureEditAt < LONG_PRESS_DEDUPE_MS) return;
+  lastGestureEditAt = now;
+  if (swallowClick) {
+    const swallow = (e) => { e.stopPropagation(); e.preventDefault(); };
+    document.addEventListener("click", swallow, { capture: true, once: true });
+    // A press that ends outside any row (dragged off, or cancelled by the
+    // system) synthesizes no click at all, which would leave the listener
+    // armed to eat the user's next real tap.
+    setTimeout(() => document.removeEventListener("click", swallow, true), 1000);
+  }
+  onEditToggle();
+}
+
+function attachSwipeGestures(rowEl, { onDelete, onAssignOpen, onLongPress, deleteBg, assignBg }) {
   let startX = 0, startY = 0, startTime = 0;
   let axis = null; // null | "x" | "y", decided once past the deadzone
   let dx = 0;
   let suppressClick = false;
+  let pressTimer = null;
+
+  const cancelLongPress = () => {
+    if (pressTimer !== null) clearTimeout(pressTimer);
+    pressTimer = null;
+    rowEl.classList.remove("pressing");
+  };
 
   rowEl.addEventListener("pointerdown", (e) => {
     if (e.button !== undefined && e.button !== 0) return;
@@ -812,6 +861,18 @@ function attachSwipeGestures(rowEl, { onDelete, onAssignOpen, deleteBg, assignBg
       deleteBg.style.opacity = "0";
       assignBg.style.opacity = "0";
     }
+    // Presses that start on the drag handle, the radio, or any other control
+    // bubble up to here; those have their own meaning, so they never edit.
+    if (onLongPress && !e.target.closest("button")) {
+      // .pressing is the only confirmation an iPhone gets — navigator.vibrate
+      // doesn't exist in iOS Safari — so the visual cue isn't optional there.
+      rowEl.classList.add("pressing");
+      pressTimer = setTimeout(() => {
+        cancelLongPress();
+        if (navigator.vibrate) navigator.vibrate(10);
+        triggerGestureEdit(onLongPress, true);
+      }, LONG_PRESS_MS);
+    }
   });
 
   rowEl.addEventListener("pointermove", (e) => {
@@ -821,6 +882,7 @@ function attachSwipeGestures(rowEl, { onDelete, onAssignOpen, deleteBg, assignBg
     if (axis === null) {
       if (Math.abs(curDx) < SWIPE_DEADZONE && Math.abs(curDy) < SWIPE_DEADZONE) return;
       axis = Math.abs(curDx) > Math.abs(curDy) ? "x" : "y";
+      cancelLongPress();
       if (axis === "x") rowEl.setPointerCapture(e.pointerId);
     }
     if (axis !== "x") return;
@@ -848,6 +910,7 @@ function attachSwipeGestures(rowEl, { onDelete, onAssignOpen, deleteBg, assignBg
   }, true);
 
   const finish = (e) => {
+    cancelLongPress();
     if (startTime === 0) return;
     const elapsed = e.timeStamp - startTime;
     rowEl.classList.remove("dragging");

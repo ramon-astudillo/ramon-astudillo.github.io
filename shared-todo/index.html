@@ -165,8 +165,22 @@
     border: 1px solid var(--border); cursor: pointer;
     touch-action: pan-y; will-change: transform;
     transition: transform 0.2s ease-out;
+    /* Long press opens the edit panel (see attachSwipeGestures), so the
+       platform's own long-press UI has to stay out of the way: without these
+       iOS Safari raises the selection loupe and the Copy/Look Up callout over
+       the row text. Preventing `contextmenu` in JS is not enough on iOS —
+       these two (still prefixed for WebKit) are what actually suppress it. */
+    -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;
   }
-  .todo-item.dragging { transition: none; }
+  /* Kills the transform easing so a swipe tracks the finger exactly — but
+     keeps the border easing, since .pressing rides along with .dragging. */
+  .todo-item.dragging { transition: border-color 0.45s linear; }
+  /* The press "charging" cue: the border warms to the accent over roughly the
+     hold duration. On Android the vibrate() on completion confirms it landed;
+     iOS Safari has no vibrate, so this is the whole feedback there. It tints
+     the border rather than scaling, because the row's `transform` belongs to
+     the swipe gesture, which sets it inline. */
+  .todo-item.pressing { border-color: var(--accent); }
   .todo-item.no-row-click { cursor: default; }
   .drag-handle {
     background: none; border: none; color: var(--muted); padding: 2px;
@@ -211,13 +225,6 @@
   }
   .assign-chip.selected { border-color: var(--accent); }
   .assign-chip.assign-clear { padding-left: 12px; color: var(--muted); }
-  .todo-edit {
-    background: none; border: none; color: var(--muted); padding: 6px;
-    cursor: pointer; display: flex; align-items: center; justify-content: center;
-    min-width: 28px;
-  }
-  .todo-edit svg { width: 16px; height: 16px; stroke: currentColor; fill: none; }
-  .todo-edit:active { color: var(--accent); }
   .todo-expand {
     background: var(--card); border: 1px solid var(--border); border-top: none;
     border-radius: 0 0 12px 12px; padding: 10px 14px; margin-top: -8px;
