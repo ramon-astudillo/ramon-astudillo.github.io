@@ -429,10 +429,19 @@ function renderRow(entity, { isSub, onToggle, onEditToggle, onRowClick, onDelete
   // and preventDefault also keeps the native menu away on the platforms that
   // raise contextmenu from the long press itself (Android Chrome does — the
   // dedupe in triggerGestureEdit is what stops that opening the panel twice).
+  //
+  // That platform contextmenu is why this needs the same "not on a control"
+  // guard as the press timer, and can't rely on attachDragReorder's
+  // stopPropagation: reordering starts by holding the drag handle, and the
+  // hold raises contextmenu on the handle, which bubbles here as its own
+  // event — opening the edit panel in the middle of a drag. preventDefault
+  // still runs for those, so the native menu stays suppressed either way.
+  //
   // A genuine right click (button 2) is followed by no click event, so it
   // must not arm the swallow — that would eat the user's next real tap.
   row.addEventListener("contextmenu", (e) => {
     e.preventDefault();
+    if (e.target.closest("button")) return;
     triggerGestureEdit(onEditToggle, e.button !== 2);
   });
 
