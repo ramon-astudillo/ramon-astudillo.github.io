@@ -199,6 +199,17 @@ function sortedForDisplay(entities, isSub) {
     if (f.pendingFirst) {
       const diff = (a.done ? 1 : 0) - (b.done ? 1 : 0);
       if (diff !== 0) return diff;
+      // Within the completed block, most recently checked first — so
+      // ticking something moves it just past the last unfinished item
+      // rather than all the way to the bottom of the list, where the user
+      // can't see what they just did. Items completed before this field
+      // existed (or by an older client) have no `done_at` and sort below
+      // the ones that do, keeping their relative order.
+      if (a.done) {
+        if (a.done_at && b.done_at) { if (a.done_at !== b.done_at) return a.done_at < b.done_at ? 1 : -1; }
+        else if (a.done_at) return -1;
+        else if (b.done_at) return 1;
+      }
     }
     if (f.dueFirst) {
       const ak = deadlineKey(a, isSub);
@@ -1523,7 +1534,14 @@ function applyOp(list, op) {
     }
     case "toggle": {
       const t = list.find((x) => x.id === op.id);
-      if (t) { t.done = !t.done; t.updated_at = op.now; }
+      if (!t) break;
+      t.done = !t.done;
+      // `done_at` is what lets a just-checked item settle at the *top* of
+      // the completed block instead of falling to the bottom of the list
+      // (see sortedForDisplay). Cleared on un-check so it never describes
+      // an item that isn't done.
+      if (t.done) t.done_at = op.now; else delete t.done_at;
+      t.updated_at = op.now;
       break;
     }
     case "delete": {
@@ -1569,6 +1587,7 @@ function applyOp(list, op) {
       const child = parent && parent.children && parent.children.find((c) => c.id === op.childId);
       if (!child) break;
       child.done = !child.done;
+      if (child.done) child.done_at = op.now; else delete child.done_at;
       child.updated_at = op.now;
       parent.updated_at = op.now;
       break;
