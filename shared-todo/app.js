@@ -2226,6 +2226,10 @@ async function refreshUpdateButtonLabel() {
   const btn = el("forceUpdateBtn");
   if (btn.disabled) return; // an update is already in progress
   await checkForUpdate();
+  // Same amber as the gear's dot, so the thing the dot sent the user here
+  // to find is visibly the same signal rather than one plain row among the
+  // several this sheet already has.
+  btn.classList.toggle("update-ready", updateVersion !== null);
   btn.textContent = updateVersion ? "Update to v" + updateVersion : "Check for update";
 }
 

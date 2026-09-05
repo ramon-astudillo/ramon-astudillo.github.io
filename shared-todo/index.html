@@ -336,6 +336,11 @@
     padding: 8px 14px; font-size: 0.85rem; cursor: pointer; color: var(--text);
   }
   .settings-sheet button.danger { color: var(--danger); border-color: var(--danger); }
+  /* Padding drops by the extra border pixel so thickening the border
+     doesn't nudge the row's layout. */
+  .settings-sheet button.update-ready {
+    border: 2px solid var(--update-dot); padding: 7px 13px; font-weight: 600;
+  }
   .settings-sheet .close-row { text-align: center; margin-top: 8px; }
   .settings-sheet .close-row button { background: none; border: none; color: var(--accent); font-size: 0.95rem; padding: 10px; }
   .settings-sheet .advanced-settings summary {
