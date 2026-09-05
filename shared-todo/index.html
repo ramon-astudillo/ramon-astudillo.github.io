@@ -19,6 +19,7 @@
     --danger: #d64545;
     --border: #e3e5e8;
     --done: #9aa0a6;
+    --update-dot: #f0a020;
   }
   /* Dark palette applies automatically when the OS is dark (unless the user
      picked Light in Settings), and always when the user picked Dark —
@@ -34,6 +35,7 @@
       --danger: #ff6b6b;
       --border: #33353c;
       --done: #6b7280;
+      --update-dot: #f5b544;
     }
   }
   :root[data-theme="dark"] {
@@ -46,6 +48,7 @@
     --danger: #ff6b6b;
     --border: #33353c;
     --done: #6b7280;
+    --update-dot: #f5b544;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   [hidden] { display: none !important; }
@@ -111,7 +114,17 @@
   .color-picker button.selected { border-color: var(--text); }
   .icon-btn {
     background: none; border: none; font-size: 1.3rem; padding: 8px; line-height: 1;
-    color: var(--muted); cursor: pointer;
+    color: var(--muted); cursor: pointer; position: relative;
+  }
+  /* The only hint the main screen gives that a newer version is on the
+     server: one amber dot on the gear, which is already where the user
+     would go to act on it. Deliberately not a banner or a toast — the
+     header is crowded and an update is never urgent. Ringed in the page
+     background so it reads as a badge against the emoji behind it. */
+  .icon-btn.has-update::after {
+    content: ""; position: absolute; top: 4px; right: 3px;
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--update-dot); border: 2px solid var(--bg);
   }
 
   main { flex: 1; padding: 0 12px 100px; }
@@ -375,8 +388,8 @@
   <header>
     <h1 id="headerTitle">Lists</h1>
     <span class="sync-status" id="syncStatus" hidden>Not synced yet</span>
-    <button class="icon-btn" id="refreshBtn" title="Refresh" hidden>&#8635;</button>
-    <button class="icon-btn" id="settingsBtn" title="Settings" hidden>&#9881;</button>
+    <button class="icon-btn" id="refreshBtn" title="Refresh" hidden>&#128260;</button>
+    <button class="icon-btn" id="settingsBtn" title="Settings" hidden>&#9881;&#65039;</button>
   </header>
   <div class="tab-bar" id="tabBar" hidden></div>
 

@@ -2184,21 +2184,33 @@ function wireEvents() {
 // cache-invalidating deploy has landed since. Fetched with cache: "no-store"
 // so this check itself isn't answered by the very service-worker cache
 // it's trying to detect staleness of.
-async function refreshUpdateButtonLabel() {
-  const btn = el("forceUpdateBtn");
-  if (btn.disabled) return; // an update is already in progress
+
+let updateVersion = null; // deployed version, when newer than this device's
+let lastUpdateCheck = 0;
+const UPDATE_CHECK_INTERVAL_MS = 15 * 60 * 1000;
+
+// Reads the deployed APP_VERSION and lights the gear's dot if it differs
+// from what this device is running. Never throws: offline is the ordinary
+// case here (the app runs from a service-worker cache), and a failed check
+// just leaves whatever the last one concluded.
+async function checkForUpdate() {
+  lastUpdateCheck = Date.now();
   try {
     const res = await fetch("config.js?_=" + Date.now(), { cache: "no-store" });
     const text = await res.text();
     const match = text.match(/APP_VERSION:\s*"([^"]+)"/);
-    if (match && match[1] !== CONFIG.APP_VERSION) {
-      btn.textContent = "Update to v" + match[1];
-      return;
-    }
+    if (match) updateVersion = match[1] === CONFIG.APP_VERSION ? null : match[1];
   } catch (err) {
-    console.error(err); // offline or unreachable — leave the default label
+    console.error(err); // offline or unreachable — keep the previous verdict
   }
-  btn.textContent = "Check for update";
+  el("settingsBtn").classList.toggle("has-update", updateVersion !== null);
+}
+
+async function refreshUpdateButtonLabel() {
+  const btn = el("forceUpdateBtn");
+  if (btn.disabled) return; // an update is already in progress
+  await checkForUpdate();
+  btn.textContent = updateVersion ? "Update to v" + updateVersion : "Check for update";
 }
 
 // Unregisters the service worker and clears its caches, then reloads —
@@ -2251,6 +2263,17 @@ async function main() {
   if (!unlocked) {
     showScreen("passphrase");
   }
+
+  // An installed PWA can sit in the background for days, so one check at
+  // startup isn't enough — but it's also the only moment a phone reliably
+  // gives us, so re-check when the app is brought back to the foreground,
+  // rate-limited so flipping between apps isn't a stream of requests.
+  checkForUpdate();
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible") return;
+    if (Date.now() - lastUpdateCheck < UPDATE_CHECK_INTERVAL_MS) return;
+    checkForUpdate();
+  });
 }
 
 document.addEventListener("DOMContentLoaded", main);
