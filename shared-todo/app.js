@@ -439,8 +439,9 @@ function renderRow(entity, { isSub, onToggle, onEditToggle, onRowClick, onDelete
   handle.onclick = (e) => e.stopPropagation();
   row.appendChild(handle);
 
+  let check = null;
   if (!isNote) {
-    const check = document.createElement("button");
+    check = document.createElement("button");
     check.className = "todo-check" + (isSub ? " sub-check" : "") + (entity.done ? " done" : "");
     check.innerHTML = '<svg viewBox="0 0 24 24" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
     check.onclick = (e) => { e.stopPropagation(); onToggle(); };
@@ -482,14 +483,29 @@ function renderRow(entity, { isSub, onToggle, onEditToggle, onRowClick, onDelete
     row.appendChild(badge);
   }
 
+  // Who an item is assigned to is shown by tinting its check circle in that
+  // person's color, rather than by an initialled avatar at the end of the
+  // row: a second circle on every assigned row was visual noise, and the
+  // check circle is already a colored circle sitting right next to the text.
+  // The name is still one tap away (swipe right opens the assign panel) and
+  // is on the button's tooltip for desktop.
   if (entity.assigned_to) {
     const user = findUser(entity.assigned_to);
-    const avatar = document.createElement("span");
-    avatar.className = "assignee-avatar";
-    avatar.style.background = userColor(user);
-    avatar.textContent = userInitial(user);
-    avatar.title = "Assigned to " + ((user && user.name) || "Unnamed");
-    row.appendChild(avatar);
+    const color = userColor(user);
+    const label = "Assigned to " + ((user && user.name) || "Unnamed");
+    if (check) {
+      check.style.borderColor = color;
+      if (entity.done) check.style.background = color;
+      check.title = label;
+    } else {
+      // A note has no check circle to carry the tint, so it keeps a plain
+      // dot — the same signal, minus the initial that made it noisy.
+      const dot = document.createElement("span");
+      dot.className = "assignee-dot";
+      dot.style.background = color;
+      dot.title = label;
+      row.appendChild(dot);
+    }
   }
 
   if (onRowClick) row.onclick = onRowClick;

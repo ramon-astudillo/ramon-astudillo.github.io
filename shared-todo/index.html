@@ -224,6 +224,13 @@
   .todo-days.today { color: var(--accent); font-weight: 600; }
   .todo-days.overdue { color: var(--danger); font-weight: 600; }
   .todo-days.inherited { font-style: italic; opacity: 0.75; }
+  /* Assignment on a note, which has no check circle to tint. Same size as
+     the avatar it replaced, without the initial. */
+  .assignee-dot {
+    width: 12px; height: 12px; min-width: 12px; border-radius: 50%; flex: none;
+  }
+  /* Still used for the chips in the assign panel, where the initial next to
+     the name is the point rather than clutter. */
   .assignee-avatar {
     width: 20px; height: 20px; min-width: 20px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
