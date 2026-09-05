@@ -150,14 +150,73 @@ function setSyncState(state) {
   }
 }
 
-// `todos` array order is the source of truth for display order (drag-to-
-// reorder mutates it directly via the "reorder" op) — no separate sort here.
-// This was already true in effect before reordering existed, since "add"
-// only ever pushed to the end, so this changes nothing for existing data.
+// --- Display ordering ------------------------------------------------
+//
+// The `todos` array order is the stored order (drag-to-reorder mutates it
+// directly via the "reorder" op). On top of that a board can opt into one
+// or both sorting options from its settings page; those are *display only*
+// and never rewrite the array, so turning them back off restores the
+// manual order exactly. They live in the manifest, next to the board's
+// label and icon, so the choice is shared by everyone on the passphrase.
+
+function boardSortFlags() {
+  // saveManifest replaces `boards` wholesale after every write, which can
+  // leave `currentBoard` pointing at a superseded object — look the live
+  // one up by id and fall back only if it has gone (mid-delete).
+  const board = (currentBoard && boards.find((b) => b.id === currentBoard.id)) || currentBoard;
+  return {
+    pendingFirst: !!(board && board.sort_pending_first),
+    dueFirst: !!(board && board.sort_due_first),
+  };
+}
+
+function sortActive() {
+  const f = boardSortFlags();
+  return f.pendingFirst || f.dueFirst;
+}
+
+// Comparable "YYYY-MM-DDTHH:MM" string, or null for no deadline. A
+// top-level item with no due date of its own borrows its earliest child's,
+// matching the inherited badge the row already shows — otherwise a parent
+// whose only deadline lives on a sub-item would sort to the bottom while
+// displaying an urgent date.
+function deadlineKey(entity, isSub) {
+  let e = entity;
+  if (!isSub && !e.due_date) e = earliestChildDeadline(entity) || entity;
+  if (!e.due_date) return null;
+  return e.due_date + "T" + (e.due_time || "00:00");
+}
+
+// Returns `entities` untouched when no sorting is on, so the common case
+// allocates nothing. Array#sort is stable, so items that tie on every
+// active criterion keep their manual order. Notes have no `done`, which
+// makes them sort with the unfinished items — they're never "done", so
+// sinking them with the checked-off ones would be wrong.
+function sortedForDisplay(entities, isSub) {
+  const f = boardSortFlags();
+  if (!f.pendingFirst && !f.dueFirst) return entities;
+  return entities.slice().sort((a, b) => {
+    if (f.pendingFirst) {
+      const diff = (a.done ? 1 : 0) - (b.done ? 1 : 0);
+      if (diff !== 0) return diff;
+    }
+    if (f.dueFirst) {
+      const ak = deadlineKey(a, isSub);
+      const bk = deadlineKey(b, isSub);
+      if (ak !== bk) {
+        if (ak === null) return 1;
+        if (bk === null) return -1;
+        return ak < bk ? -1 : 1;
+      }
+    }
+    return 0;
+  });
+}
+
 function render() {
   const list = el("todoList");
   list.innerHTML = "";
-  for (const todo of todos) list.appendChild(renderTodoItem(todo));
+  for (const todo of sortedForDisplay(todos, false)) list.appendChild(renderTodoItem(todo));
   el("todoList").hidden = false;
   el("emptyState").hidden = todos.length !== 0;
 }
@@ -673,7 +732,12 @@ function renderTodoItem(todo) {
     onAssignOpen: () => { assigningIds.has(todo.id) ? assigningIds.delete(todo.id) : assigningIds.add(todo.id); render(); },
   });
   wrap.appendChild(rowEl);
-  attachDragReorder(handle, wrap, () => Array.from(el("todoList").children), (fromIndex, toIndex) => reorderTodo(todo.id, toIndex));
+  // Reordering writes the drop position as an index into the stored array,
+  // which only lines up with the rendered order while nothing is sorting
+  // the display — so with a sort on, the handle goes away rather than
+  // silently moving the item somewhere else.
+  if (sortActive()) handle.hidden = true;
+  else attachDragReorder(handle, wrap, () => Array.from(el("todoList").children), (fromIndex, toIndex) => reorderTodo(todo.id, toIndex));
 
   if (editingIds.has(todo.id)) {
     const panel = document.createElement("div");
@@ -707,7 +771,7 @@ function renderChildrenSection(todo) {
     const ul = document.createElement("ul");
     ul.className = "sub-list";
 
-    for (const child of children) {
+    for (const child of sortedForDisplay(children, true)) {
       const li = document.createElement("li");
       li.className = "sub-item-wrap" + (child.type === "note" ? " note-item-wrap" : "");
 
@@ -719,7 +783,8 @@ function renderChildrenSection(todo) {
         onAssignOpen: () => { assigningIds.has(child.id) ? assigningIds.delete(child.id) : assigningIds.add(child.id); render(); },
       });
       li.appendChild(childRowEl);
-      attachDragReorder(childHandle, li, () => Array.from(ul.children), (fromIndex, toIndex) => reorderSubTodo(todo.id, child.id, toIndex));
+      if (sortActive()) childHandle.hidden = true;
+      else attachDragReorder(childHandle, li, () => Array.from(ul.children), (fromIndex, toIndex) => reorderSubTodo(todo.id, child.id, toIndex));
 
       if (editingIds.has(child.id)) {
         const panel = document.createElement("div");
@@ -1262,6 +1327,8 @@ function openBoardPage(id) {
   boardPageId = id;
   el("boardPageHeading").textContent = board.label;
   el("boardTitleInput").value = board.label;
+  el("sortPendingInput").checked = !!board.sort_pending_first;
+  el("sortDueInput").checked = !!board.sort_due_first;
   el("importText").value = "";
   renderBoardIconPicker();
   el("settingsMain").hidden = true;
@@ -1354,6 +1421,24 @@ async function renameBoard(id, label, icon) {
   }
   if (boardPageId === id) el("boardPageHeading").textContent = trimmed;
   renderTabs();
+}
+
+// Toggles one of a board's display-sort options. Same shape as
+// renameBoard: manifest-only, saved on tap, with the live `currentBoard`
+// patched by hand because saveManifest swaps the `boards` array out from
+// under it. Re-renders so the open list reorders immediately.
+async function setBoardSort(id, key, value) {
+  const manifest = await fetchManifest() || emptyManifest();
+  const b = manifest.boards.find((x) => x.id === id);
+  if (!b) return;
+  if (value) b[key] = true;
+  else delete b[key]; // absent rather than false — an off switch adds nothing to the file
+  await saveManifest(manifest);
+  if (currentBoard && currentBoard.id === id) {
+    if (value) currentBoard[key] = true;
+    else delete currentBoard[key];
+    render();
+  }
 }
 
 // Sets this device's display name + assignee color in the shared manifest.
@@ -2008,6 +2093,20 @@ function wireEvents() {
     const board = boards.find((b) => b.id === boardPageId);
     if (board) renameBoard(board.id, el("boardTitleInput").value, board.icon);
   };
+
+  // Saved on toggle, like the icon swatches. If the manifest write fails
+  // the checkbox would be left showing a state that never landed, so it is
+  // put back from the board record either way.
+  const wireSortToggle = (elementId, key) => {
+    el(elementId).onchange = async (e) => {
+      const id = boardPageId;
+      await setBoardSort(id, key, e.target.checked);
+      const board = boards.find((b) => b.id === id);
+      if (board && boardPageId === id) e.target.checked = !!board[key];
+    };
+  };
+  wireSortToggle("sortPendingInput", "sort_pending_first");
+  wireSortToggle("sortDueInput", "sort_due_first");
 
   el("boardExportBtn").onclick = () => exportBoard(boardPageId);
   el("boardDeleteBtn").onclick = () => deleteBoard(boardPageId);

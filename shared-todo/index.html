@@ -330,6 +330,12 @@
     font-size: 0.85rem; width: 120px; background: var(--card); color: var(--text);
   }
   .settings-sheet .row .row-actions { display: flex; gap: 6px; }
+  /* The label takes the free space so tapping anywhere on the row's text
+     hits the checkbox, which is small and awkward to hit on a phone. */
+  .settings-sheet .row.sort-row { padding: 10px 0; }
+  .settings-sheet .row.sort-row label { flex: 1; cursor: pointer; }
+  .settings-sheet .row.sort-row input[type=checkbox] { width: auto; margin: 0; flex: none; }
+  .settings-sheet .sort-note { font-size: 0.78rem; color: var(--muted); margin: 8px 0 0; }
   .import-form { display: flex; flex-direction: column; gap: 8px; padding: 4px 0 12px; }
   .import-form textarea {
     width: 100%; box-sizing: border-box; resize: vertical; min-height: 96px;
@@ -462,6 +468,17 @@
 
         <span class="field-label">Icon</span>
         <div class="emoji-picker" id="boardIconPicker"></div>
+
+        <span class="field-label">Sorting</span>
+        <div class="row sort-row">
+          <label for="sortPendingInput">Unfinished items at the top</label>
+          <input type="checkbox" id="sortPendingInput">
+        </div>
+        <div class="row sort-row">
+          <label for="sortDueInput">Closest deadline at the top</label>
+          <input type="checkbox" id="sortDueInput">
+        </div>
+        <p class="sort-note">Applies to this list for everyone sharing it. With both on, unfinished items come first and are ordered by deadline. While either is on, items can't be dragged into a manual order.</p>
 
         <span class="field-label">Import items</span>
         <form class="import-form" id="importForm">
