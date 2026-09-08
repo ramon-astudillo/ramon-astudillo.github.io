@@ -462,6 +462,10 @@ function renderRow(entity, { isSub, onToggle, onEditToggle, onRowClick, onDelete
   row.appendChild(text);
 
   const children = entity.children || [];
+  // An urgent sub-item reddens its parent too, the same way a child's
+  // deadline surfaces on the parent below — a collapsed row shouldn't hide
+  // that something inside it is on fire. Done sub-items stop counting.
+  if (entity.urgent || children.some((c) => c.urgent && !c.done)) row.classList.add("urgent");
   const checkableChildren = children.filter((c) => c.type !== "note");
   if (!isSub && checkableChildren.length > 0) {
     const doneCount = checkableChildren.filter((c) => c.done).length;
@@ -557,15 +561,29 @@ function entityToMarkdown(entity) {
   return lines.join("\n");
 }
 
-function copyEntityMarkdown(entity) {
+function writeClipboard(text, okMessage) {
   if (!navigator.clipboard) {
     toast("Clipboard not available in this browser.");
     return;
   }
-  navigator.clipboard.writeText(entityToMarkdown(entity)).then(
-    () => toast("Copied to clipboard."),
+  navigator.clipboard.writeText(text).then(
+    () => toast(okMessage),
     () => toast("Couldn't copy — clipboard access denied.")
   );
+}
+
+// "Copy" is the plain-prose one: just this item's own text (emoji icon
+// included, since that reads as part of the label), with no checkbox, no
+// deadline suffix and no sub-items — for dropping a single line into a
+// message. "Export" below is the round-trippable one.
+function copyEntityText(entity) {
+  writeClipboard(textWithIcon(entity), "Text copied to clipboard.");
+}
+
+// The Markdown-ish dump: this item's own line plus every sub-item, in the
+// same format the paste importer reads back (see parseImportLine).
+function exportEntityMarkdown(entity) {
+  writeClipboard(entityToMarkdown(entity), "Exported to clipboard.");
 }
 
 // Panel opened by swipe-right (see attachSwipeGestures's onAssignOpen),
@@ -613,6 +631,45 @@ function renderAssignPanel(entity, onAssign) {
   return panel;
 }
 
+// The three non-Save actions every edit panel carries, in one place since
+// renderEditForm and renderNoteEditForm both need exactly the same wiring:
+// Copy (this item's text alone), Export (Markdown, sub-items included), and
+// Urgent — a toggle whose new value rides along in the save patch, like the
+// note form's Bold, so nothing is written until Save is pressed.
+function makeCopyExportButtons(entity) {
+  const copyBtn = document.createElement("button");
+  copyBtn.type = "button";
+  copyBtn.className = "copy-btn";
+  copyBtn.textContent = "Copy";
+  copyBtn.title = "Copy this item's text";
+  copyBtn.onclick = () => copyEntityText(entity);
+
+  const exportBtn = document.createElement("button");
+  exportBtn.type = "button";
+  exportBtn.className = "copy-btn";
+  exportBtn.textContent = "Export";
+  exportBtn.title = "Copy as Markdown, with sub-items";
+  exportBtn.onclick = () => exportEntityMarkdown(entity);
+
+  return [copyBtn, exportBtn];
+}
+
+// Returns the button plus a getter for its current state, so the caller can
+// read it at submit time without tracking the flag itself.
+function makeUrgentToggle(entity) {
+  let urgent = !!entity.urgent;
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "urgent-toggle-btn" + (urgent ? " active" : "");
+  btn.textContent = "!";
+  btn.title = "Urgent (red border, here and on the parent item)";
+  btn.onclick = () => {
+    urgent = !urgent;
+    btn.classList.toggle("active", urgent);
+  };
+  return { btn, get: () => urgent };
+}
+
 // Shared rename + due-date/time form used by both top-level todos and
 // sub-todos. Time is optional and only meaningful when a date is set — if
 // the date is cleared, any time is dropped with it; if a date is set with no
@@ -652,13 +709,9 @@ function renderEditForm(entity, onSave) {
   saveBtn.type = "submit";
   saveBtn.textContent = "Save";
 
-  const copyBtn = document.createElement("button");
-  copyBtn.type = "button";
-  copyBtn.className = "copy-btn";
-  copyBtn.textContent = "Copy";
-  copyBtn.onclick = () => copyEntityMarkdown(entity);
+  const urgent = makeUrgentToggle(entity);
 
-  btnRow.append(saveBtn, copyBtn);
+  btnRow.append(saveBtn, ...makeCopyExportButtons(entity), urgent.btn);
 
   form.append(dateRow, textInput, btnRow);
   form.onsubmit = (e) => {
@@ -667,6 +720,7 @@ function renderEditForm(entity, onSave) {
       text: textInput.value,
       due_date: dateInput.value || null,
       due_time: dateInput.value ? (timeInput.value || null) : null,
+      urgent: urgent.get(),
     });
   };
   return form;
@@ -703,18 +757,14 @@ function renderNoteEditForm(entity, onSave) {
   saveBtn.type = "submit";
   saveBtn.textContent = "Save";
 
-  const copyBtn = document.createElement("button");
-  copyBtn.type = "button";
-  copyBtn.className = "copy-btn";
-  copyBtn.textContent = "Copy";
-  copyBtn.onclick = () => copyEntityMarkdown(entity);
+  const urgent = makeUrgentToggle(entity);
 
-  btnRow.append(boldBtn, saveBtn, copyBtn);
+  btnRow.append(boldBtn, saveBtn, ...makeCopyExportButtons(entity), urgent.btn);
 
   form.append(textInput, btnRow);
   form.onsubmit = (e) => {
     e.preventDefault();
-    onSave({ text: textInput.value, bold });
+    onSave({ text: textInput.value, bold, urgent: urgent.get() });
   };
   return form;
 }
@@ -1580,6 +1630,9 @@ function applyOp(list, op) {
       t.text = op.patch.text;
       if ("icon" in op.patch) { if (op.patch.icon) t.icon = op.patch.icon; else delete t.icon; }
       if (op.patch.bold !== undefined) t.bold = op.patch.bold;
+      // Dropped rather than stored as false, so an item that was never
+      // marked urgent stays byte-identical to what older builds wrote.
+      if (op.patch.urgent !== undefined) { if (op.patch.urgent) t.urgent = true; else delete t.urgent; }
       if (op.patch.due_date) {
         t.due_date = op.patch.due_date;
         if (op.patch.due_time) t.due_time = op.patch.due_time; else delete t.due_time;
@@ -1636,6 +1689,7 @@ function applyOp(list, op) {
       child.text = op.patch.text;
       if ("icon" in op.patch) { if (op.patch.icon) child.icon = op.patch.icon; else delete child.icon; }
       if (op.patch.bold !== undefined) child.bold = op.patch.bold;
+      if (op.patch.urgent !== undefined) { if (op.patch.urgent) child.urgent = true; else delete child.urgent; }
       if (op.patch.due_date) {
         child.due_date = op.patch.due_date;
         if (op.patch.due_time) child.due_time = op.patch.due_time; else delete child.due_time;
@@ -1920,6 +1974,7 @@ function editTodo(id, patch) {
   // text field is what clears the icon — see applyOp's "edit" case.
   const opPatch = { text: trimmed, icon };
   if (patch.bold !== undefined) opPatch.bold = !!patch.bold;
+  if (patch.urgent !== undefined) opPatch.urgent = !!patch.urgent;
   if ("due_date" in patch) { opPatch.due_date = patch.due_date; opPatch.due_time = patch.due_time; }
   applyEdit({ type: "edit", id, now: new Date().toISOString(), patch: opPatch });
 }
@@ -1927,13 +1982,13 @@ function editTodo(id, patch) {
 function editSubTodo(parentId, childId, patch) {
   const { icon, text: trimmed } = splitLeadingIcon(patch.text);
   if (!trimmed) return;
-  applyEdit({ type: "editSub", parentId, childId, now: new Date().toISOString(), patch: { text: trimmed, icon, due_date: patch.due_date, due_time: patch.due_time } });
+  applyEdit({ type: "editSub", parentId, childId, now: new Date().toISOString(), patch: { text: trimmed, icon, due_date: patch.due_date, due_time: patch.due_time, urgent: !!patch.urgent } });
 }
 
 function editSubNote(parentId, childId, patch) {
   const { icon, text: trimmed } = splitLeadingIcon(patch.text);
   if (!trimmed) return;
-  applyEdit({ type: "editSub", parentId, childId, now: new Date().toISOString(), patch: { text: trimmed, icon, bold: !!patch.bold } });
+  applyEdit({ type: "editSub", parentId, childId, now: new Date().toISOString(), patch: { text: trimmed, icon, bold: !!patch.bold, urgent: !!patch.urgent } });
 }
 
 // Deletes immediately (swipe has no separate confirm step) but snapshots the

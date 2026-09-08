@@ -185,6 +185,11 @@
        these two (still prefixed for WebKit) are what actually suppress it. */
     -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;
   }
+  /* Flagged urgent from the edit panel. A parent row wears it too when any
+     of its open sub-items is urgent (see renderRow), so a collapsed row
+     still shows it. Declared before .pressing so the press cue wins while
+     the finger is down. */
+  .todo-item.urgent { border-color: var(--danger); box-shadow: 0 0 0 1px var(--danger); }
   /* Kills the transform easing so a swipe tracks the finger exactly — but
      keeps the border easing, since .pressing rides along with .dragging. */
   .todo-item.dragging { transition: border-color 0.45s linear; }
@@ -251,6 +256,9 @@
   }
   .edit-form { display: flex; flex-direction: column; gap: 8px; padding: 6px 0; }
   .edit-date-row, .edit-btn-row { display: flex; gap: 8px; }
+  /* Five buttons now (Bold / Save / Copy / Export / !) — wrap rather than
+     squeeze them off the edge of a narrow phone. */
+  .edit-btn-row { flex-wrap: wrap; }
   .edit-form input[type=text] { width: 100%; padding: 8px 10px; font-size: 0.85rem; border-radius: 8px; }
   .edit-date-row input[type=date],
   .edit-date-row input[type=time] { flex: 1; min-width: 0; padding: 8px 10px; font-size: 0.85rem; border-radius: 8px; }
@@ -267,6 +275,11 @@
     padding: 8px 14px; font-size: 0.85rem; font-weight: 700; cursor: pointer; color: var(--muted);
   }
   .bold-toggle-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
+  .urgent-toggle-btn {
+    background: none; border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 14px; font-size: 0.85rem; font-weight: 700; cursor: pointer; color: var(--muted);
+  }
+  .urgent-toggle-btn.active { background: var(--danger); border-color: var(--danger); color: white; }
   .children-section { margin-top: 4px; }
   .sub-list {
     list-style: none; margin: 4px 0 0 30px; padding: 2px 0 2px 12px;
