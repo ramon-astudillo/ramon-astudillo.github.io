@@ -195,33 +195,83 @@ function deadlineKey(entity, isSub) {
 function sortedForDisplay(entities, isSub) {
   const f = boardSortFlags();
   if (!f.pendingFirst && !f.dueFirst) return entities;
-  return entities.slice().sort((a, b) => {
-    if (f.pendingFirst) {
-      const diff = (a.done ? 1 : 0) - (b.done ? 1 : 0);
-      if (diff !== 0) return diff;
-      // Within the completed block, most recently checked first — so
-      // ticking something moves it just past the last unfinished item
-      // rather than all the way to the bottom of the list, where the user
-      // can't see what they just did. Items completed before this field
-      // existed (or by an older client) have no `done_at` and sort below
-      // the ones that do, keeping their relative order.
-      if (a.done) {
-        if (a.done_at && b.done_at) { if (a.done_at !== b.done_at) return a.done_at < b.done_at ? 1 : -1; }
-        else if (a.done_at) return -1;
-        else if (b.done_at) return 1;
-      }
+  return entities.slice().sort((a, b) => compareForDisplay(a, b, f, isSub));
+}
+
+// The comparison sortedForDisplay sorts by, split out so storedDropIndex can
+// ask the same question the sort asks: a 0 here means the two items tie on
+// every active criterion, i.e. they sit in the same block of the displayed
+// list and their relative order is decided purely by manual rank.
+function compareForDisplay(a, b, f, isSub) {
+  if (f.pendingFirst) {
+    const diff = (a.done ? 1 : 0) - (b.done ? 1 : 0);
+    if (diff !== 0) return diff;
+    // Within the completed block, most recently checked first — so
+    // ticking something moves it just past the last unfinished item
+    // rather than all the way to the bottom of the list, where the user
+    // can't see what they just did. Items completed before this field
+    // existed (or by an older client) have no `done_at` and sort below
+    // the ones that do, keeping their relative order.
+    if (a.done) {
+      if (a.done_at && b.done_at) { if (a.done_at !== b.done_at) return a.done_at < b.done_at ? 1 : -1; }
+      else if (a.done_at) return -1;
+      else if (b.done_at) return 1;
     }
-    if (f.dueFirst) {
-      const ak = deadlineKey(a, isSub);
-      const bk = deadlineKey(b, isSub);
-      if (ak !== bk) {
-        if (ak === null) return 1;
-        if (bk === null) return -1;
-        return ak < bk ? -1 : 1;
-      }
+  }
+  if (f.dueFirst) {
+    const ak = deadlineKey(a, isSub);
+    const bk = deadlineKey(b, isSub);
+    if (ak !== bk) {
+      if (ak === null) return 1;
+      if (bk === null) return -1;
+      return ak < bk ? -1 : 1;
     }
-    return 0;
-  });
+  }
+  return 0;
+}
+
+// Translates a drop position from displayed order into an index in the
+// stored array. attachDragReorder reports `displayToIndex` as an index into
+// the rendered sibling order, counted after the dragged item is removed —
+// which is the stored order exactly while nothing is sorting the display, so
+// with no sort on this passes straight through.
+//
+// With a sort on the two orders differ, and a sort is display-only (see
+// sortedForDisplay: render() sorts a copy, the stored array stays in manual
+// order, so switching a sort off restores it). Writing the display index
+// straight into the stored array would scramble that manual order, so
+// instead the item is re-ranked *relative to the neighbour it was dropped
+// against*, leaving every other item's rank untouched.
+//
+// Which neighbour: the one the item now ties with under the active sort,
+// preferring the row above. The tie matters — a neighbour in a different
+// block (a dated row among undated ones, say) is displayed nowhere near its
+// own manual rank, so anchoring to it would move the item somewhere the drop
+// never pointed at. Since the sort is stable and returns 0 on a tie, ranking
+// against a tied neighbour reproduces exactly the drop the user made.
+//
+// A drop where neither neighbour ties is a move between blocks: the rank
+// still changes, but the sort outranks it on the next render, so the row
+// springs back — unavoidable while the sort is the outer criterion.
+function storedDropIndex(entities, id, displayToIndex, isSub) {
+  if (!sortActive()) return displayToIndex;
+  const f = boardSortFlags();
+  const dragged = entities.find((e) => e.id === id);
+  const stored = entities.filter((e) => e.id !== id);
+  const display = sortedForDisplay(entities, isSub).filter((e) => e.id !== id);
+  if (!dragged || display.length === 0) return 0;
+  const clamped = Math.max(0, Math.min(displayToIndex, display.length));
+  const above = clamped > 0 ? display[clamped - 1] : null;
+  const below = clamped < display.length ? display[clamped] : null;
+  const ties = (other) => other && compareForDisplay(dragged, other, f, isSub) === 0;
+  // Math.max guards the case where a background sync swapped the array out
+  // from under the drag and the anchor is gone: fall back to the top rather
+  // than handing applyOp a negative index.
+  const indexOf = (other) => Math.max(0, stored.findIndex((e) => e.id === other.id));
+  if (ties(above)) return indexOf(above) + 1;
+  if (ties(below)) return indexOf(below);
+  if (above) return indexOf(above) + 1;
+  return indexOf(below);
 }
 
 function render() {
@@ -809,12 +859,12 @@ function renderTodoItem(todo) {
     onAssignOpen: () => { assigningIds.has(todo.id) ? assigningIds.delete(todo.id) : assigningIds.add(todo.id); render(); },
   });
   wrap.appendChild(rowEl);
-  // Reordering writes the drop position as an index into the stored array,
-  // which only lines up with the rendered order while nothing is sorting
-  // the display — so with a sort on, the handle goes away rather than
-  // silently moving the item somewhere else.
-  if (sortActive()) handle.hidden = true;
-  else attachDragReorder(handle, wrap, () => Array.from(el("todoList").children), (fromIndex, toIndex) => reorderTodo(todo.id, toIndex));
+  // A drop arrives as an index into the *rendered* order, which is not the
+  // stored order while a sort is on — storedDropIndex translates it, so the
+  // handle stays usable under a sort instead of disappearing.
+  attachDragReorder(handle, wrap, () => Array.from(el("todoList").children), (fromIndex, toIndex) =>
+    reorderTodo(todo.id, storedDropIndex(todos, todo.id, toIndex, false))
+  );
 
   if (editingIds.has(todo.id)) {
     const panel = document.createElement("div");
@@ -860,8 +910,14 @@ function renderChildrenSection(todo) {
         onAssignOpen: () => { assigningIds.has(child.id) ? assigningIds.delete(child.id) : assigningIds.add(child.id); render(); },
       });
       li.appendChild(childRowEl);
-      if (sortActive()) childHandle.hidden = true;
-      else attachDragReorder(childHandle, li, () => Array.from(ul.children), (fromIndex, toIndex) => reorderSubTodo(todo.id, child.id, toIndex));
+      // The sibling array is looked up again at drop time, not closed over,
+      // so a sync that replaced `todos` mid-drag can't leave the translation
+      // reading a detached copy.
+      attachDragReorder(childHandle, li, () => Array.from(ul.children), (fromIndex, toIndex) => {
+        const parent = todos.find((t) => t.id === todo.id);
+        if (!parent) return;
+        reorderSubTodo(todo.id, child.id, storedDropIndex(parent.children || [], child.id, toIndex, true));
+      });
 
       if (editingIds.has(child.id)) {
         const panel = document.createElement("div");
@@ -1097,10 +1153,10 @@ function attachSwipeGestures(rowEl, { onDelete, onAssignOpen, onLongPress, delet
 // translated as a whole so any open edit panel / children section moves with
 // it. `getSiblingWraps()` is called at drag-start and must return the
 // current siblings (same list: all top-level <li>s, or one parent's sub
-// <li>s) in DOM order — which matches the underlying array order, since
-// render() no longer re-sorts. `onDrop(fromIndex, toIndex)` fires once, on
-// release, with indices into that same array; the caller applies the
-// reorder to its data and re-renders (render() resets all transforms).
+// <li>s) in DOM order. `onDrop(fromIndex, toIndex)` fires once, on release,
+// with indices into that *rendered* order — which is the stored array order
+// only while no sort is on, so callers run the drop through storedDropIndex
+// before applying it and re-rendering (render() resets all transforms).
 //
 // Sibling shift amounts during the drag use the dragged row's own height as
 // a stand-in for every sibling's height. Rows at the same level are close
