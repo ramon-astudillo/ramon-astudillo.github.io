@@ -1,51 +1,31 @@
----
-layout: default
----
-{% assign ep = site.data.podcasts[page.podcast] %}
-<style>
-  .pod-player { position: sticky; top: 0; z-index: 5; background: #fff; padding: 0.5rem 0; }
-  .pod-player audio { width: 100%; }
-  .clip { border-left: 3px solid var(--aurora-purple); padding: 0.2rem 0 0.2rem 1rem; margin: 1.5rem 0; text-align: left; }
-  .clip-play { font: inherit; font-weight: bold; color: #fff; background: var(--night-blue);
-               border: 0; border-radius: 0.3rem; padding: 0.15rem 0.6rem; cursor: pointer; }
-  .clip-play:hover { background: var(--twilight-blue); }
-  .clip blockquote { margin: 0.6rem 0 0; }
-  .clip-note { margin: 0.4rem 0 0; }
-</style>
-
-<p>[<a href="{{ '/' | relative_url }}">Home</a>] [<a href="{{ '/podcasts/' | relative_url }}">Podcasts</a>] [<a href="{{ ep.episode_url }}">Episode page</a>]</p>
-
-<div class="pod-player">
-  {% assign first = ep.clips.first %}
-  <audio id="pod-audio" controls preload="none" src="{{ ep.media_url }}#t={{ first.start | default: first.t }}"></audio>
-</div>
-
-{% for clip in ep.clips %}
-  {% assign start = clip.start | default: clip.t %}
-  {% assign h = start | divided_by: 3600 %}
-  {% assign m = start | modulo: 3600 | divided_by: 60 %}
-  {% assign s = start | modulo: 60 %}
-  <div class="clip" id="t{{ clip.t }}">
-    <button class="clip-play" data-t="{{ start }}">&#9654; {% if h > 0 %}{{ h }}:{% endif %}{% if m < 10 and h > 0 %}0{% endif %}{{ m }}:{% if s < 10 %}0{% endif %}{{ s }}</button>
-    {% if clip.quote %}<blockquote>{{ clip.quote }}</blockquote>{% endif %}
-    {% if clip.note and clip.note != "" %}<p class="clip-note">{{ clip.note | markdownify | remove: '<p>' | remove: '</p>' }}</p>{% endif %}
+{% assign ep = site.data.podcasts[page.podcast] %}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ ep.show }} · notes</title>
+  <meta property="og:title" content="{{ ep.show | escape }} · {{ ep.title | escape }}">
+  <meta property="og:description" content="{{ ep.clips | size }} annotated moments">
+  <link rel="icon" type="image/png" href="{{ '/menger.png' | relative_url }}">
+  {% include podcast-style.html %}
+  <style>
+    .clip { margin: 1.75rem 0; }
+    .clip a.time { font: 700 0.9rem system-ui, sans-serif; color: var(--ink); }
+    .clip p { margin: 0.35rem 0 0; }
+  </style>
+</head>
+<body>
+<main>
+  <div class="meta">{{ ep.show }} · <a href="{{ ep.episode_url }}">episode page</a></div>
+  <h1>{{ ep.title }}</h1>
+  {% for clip in ep.clips %}
+  <div class="clip">
+    <a class="time" href="{{ '/podcasts/' | append: page.podcast | append: '/' | append: clip.t | relative_url }}">▶ {{ clip.time }}</a>
+    {% if clip.quote %}<p><mark>{{ clip.quote }}</mark></p>{% endif %}
+    {% if clip.note and clip.note != "" %}<p class="note">{{ clip.note }}</p>{% endif %}
   </div>
-{% endfor %}
-
-{{ content }}
-
-<script>
-  const audio = document.getElementById('pod-audio');
-  // Some browsers drop a currentTime set before the stream is seekable,
-  // so seek again once playback has started if it did not stick.
-  function playAt(t) {
-    audio.addEventListener('playing', () => {
-      if (Math.abs(audio.currentTime - t) > 2) audio.currentTime = t;
-    }, { once: true });
-    const seek = () => { audio.currentTime = t; audio.play(); };
-    if (audio.readyState >= 1) seek();
-    else { audio.addEventListener('loadedmetadata', seek, { once: true }); audio.load(); }
-  }
-  document.querySelectorAll('.clip-play').forEach(b =>
-    b.addEventListener('click', () => playAt(Number(b.dataset.t))));
-</script>
+  {% endfor %}
+  <footer><a href="{{ '/podcasts/' | relative_url }}">all podcasts</a> · <a href="{{ '/' | relative_url }}">Ramón Astudillo</a></footer>
+</main>
+</body>
+</html>

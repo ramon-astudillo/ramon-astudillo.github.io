@@ -1,0 +1,19 @@
+  <style>
+    :root { --bg: #fbfaf7; --ink: #1d1d1f; --muted: #8a8a90; --mark: #ffe066; --line: #e4e2dc; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #17171a; --ink: #ececef; --muted: #85858c; --mark: #6b5a12; --line: #2e2e33; }
+    }
+    body { margin: 0; background: var(--bg); color: var(--ink);
+           font: 18px/1.6 "Noto Serif", Georgia, serif; }
+    main { max-width: 42rem; margin: 0 auto; padding: 2.5rem 16px 4rem; }
+    .meta { font: 600 0.85rem/1.4 system-ui, sans-serif; color: var(--muted); }
+    .meta a { color: inherit; }
+    h1 { font: 700 1.3rem/1.35 system-ui, sans-serif; margin: 0.3rem 0 1.5rem; }
+    audio { width: 100%; }
+    .transcript { margin: 1.5rem 0; color: var(--muted); }
+    mark { background: var(--mark); color: var(--ink); padding: 0.05em 0.15em; border-radius: 0.2em;
+           box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+    .note { border-top: 1px solid var(--line); padding-top: 1rem; font-style: italic; }
+    footer { margin-top: 3rem; font: 0.85rem system-ui, sans-serif; color: var(--muted); }
+    footer a { color: inherit; }
+  </style>

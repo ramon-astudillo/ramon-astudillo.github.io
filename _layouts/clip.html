@@ -1,0 +1,38 @@
+{% assign ep = site.data.podcasts[page.podcast] %}{% assign clip = ep.clips | where: "t", page.t | first %}{% capture card %}{{ '/podcasts/' | append: page.podcast | append: '/' | append: clip.t | append: '.png' | absolute_url }}{% endcapture %}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ ep.show }} @ {{ clip.time }}</title>
+  <meta name="description" content="{{ clip.quote | default: clip.note | escape }}">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Podcast notes · Ramón Astudillo">
+  <meta property="og:title" content="{{ ep.show | escape }} · {{ ep.title | escape }} @ {{ clip.time }}">
+  <meta property="og:description" content="“{{ clip.quote | default: clip.note | escape }}”">
+  <meta property="og:url" content="{{ page.url | absolute_url }}">
+  {% if clip.quote %}<meta property="og:image" content="{{ card }}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="{{ card }}">{% endif %}
+  <link rel="icon" type="image/png" href="{{ '/menger.png' | relative_url }}">
+  {% include podcast-style.html %}
+</head>
+<body>
+<main>
+  <div class="meta">{{ ep.show }} · <a href="{{ ep.episode_url }}">episode page</a></div>
+  <h1>{{ ep.title }}</h1>
+  <audio controls preload="metadata" src="{{ ep.media_url }}#t={{ clip.start | default: clip.t }}"></audio>
+  {% if clip.quote %}<p class="transcript">{% if clip.before != "" %}…{{ clip.before }} {% endif %}<mark>{{ clip.quote }}</mark>{% if clip.after != "" %} {{ clip.after }}…{% endif %}</p>{% endif %}
+  {% if clip.note and clip.note != "" %}<p class="note">{{ clip.note }}</p>{% endif %}
+  <footer>▶ {{ clip.time }} · <a href="{{ '/podcasts/' | append: page.podcast | relative_url }}">all notes on this episode</a> · <a href="{{ '/' | relative_url }}">Ramón Astudillo</a></footer>
+</main>
+<script>
+  // Re-seek once playing in case the browser ignored the #t= offset.
+  const audio = document.querySelector('audio'), t = {{ clip.start | default: clip.t }};
+  audio.addEventListener('playing', () => {
+    if (audio.currentTime < t - 2) audio.currentTime = t;
+  }, { once: true });
+</script>
+</body>
+</html>

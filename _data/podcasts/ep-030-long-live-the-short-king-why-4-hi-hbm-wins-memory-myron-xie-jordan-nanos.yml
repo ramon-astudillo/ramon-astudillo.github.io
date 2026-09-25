@@ -4,17 +4,28 @@ episode_url: https://podcasters.spotify.com/pod/show/jordan-nanos/episodes/Ep--0
 media_url: https://anchor.fm/s/10fbee758/podcast/play/125723716/https%3A%2F%2Fd3ctxlq1ktw2nl.cloudfront.net%2Fstaging%2F2026-8-14%2F431879632-44100-2-4fa28231b375e.mp3
 clips:
 - t: 144
-  note: ''
   start: 142
-  quote: I guess Hopper or Ampere era, 8-HI was expanded. And then with Blackwell Ultra, they moved to
-    12-HI, so it's having 12 layers of DRAM dies in a HBM stack. So you basically increase your capacity
-    by 50% over 8-HI. And then the presumption from there was that you keep going taller. So the industry
-    was contemplating 16-HI for going to 16-HI, so 16 DRAM, layers of DRAM in a cube, with HBM4E. And
-    Nvidia, when they originally previewed Ruben Ultra to people at GTC last year, they said that...
+  time: '2:24'
+  note: ''
+  before: Basically, you increase your capacity by 50% over 8-HI. And then the presumption from there
+    was that you keep going taller. The industry was contemplating 16-HI for going to 16-HI, so 16 DRAM,
+    laser DRAM in a cube with HBM4e.
+  quote: And Nvidia, when they originally previewed Rubin Ultra to people at GTC last year, they said
+    that the Rubin Ultra would have 1TB of HBM per package for chip.
+  after: And to get there, they'd have four compute dyes, 16 stacks of HBM4e, and then each stack of HBM4e
+    dyes has 32GB or 4GB of DRAM capacity. And then they'd make it 16-HI, so that's how you get to 1TB.
+    But now, what we understand is that you're fast-forward.
 - t: 1094
-  note: The whole Rubin having 192MB instead of 1T HPM
   start: 1092
-  quote: Data wires between the cube and the compute die. Depending on whether it's 4-HI, 8-HI, 12-HI,
-    these IOs are divided across the stack. Each cube, you can support up to 512 of these signal IOs.
-    So you need 4 to max that for utilization of that whole year in 2048. But of course, because the suppliers,
-    they charge you for the capacity. Customers pay effectively on a dollar per gigabyte basis for HBM.
+  time: '18:14'
+  note: The whole Rubin having 192MB instead of 1T HPM
+  before: I'm going to cross up the stack. So each cube, you can support up to 512 of these, I guess,
+    signal IOs. So you need four to sort of max that for utilization of that whole year in 2048. But of
+    course, because the suppliers,
+  quote: they charge you for the capacity. So customers pay effectively on a dollar per gigabyte basis
+    for HBM. That's how they price it. So you can have, but the bandwidth is same. So if you're paying
+    for more capacity with 8-HI or 12-HI, you're paying much more, you're almost double or triple what
+    you paid for the same cube of 4-HI HBM.
+  after: But if you're really bandwidth focused, you're getting the same bandwidth from each of these
+    cubes regardless. So the dollar per bandwidth property is much better after 4-HI. So paying for 4-HI
+    only when...
