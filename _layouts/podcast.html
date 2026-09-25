@@ -16,7 +16,8 @@ layout: default
 <p>[<a href="{{ '/' | relative_url }}">Home</a>] [<a href="{{ '/podcasts/' | relative_url }}">Podcasts</a>] [<a href="{{ ep.episode_url }}">Episode page</a>]</p>
 
 <div class="pod-player">
-  <audio id="pod-audio" controls preload="none" src="{{ ep.media_url }}"></audio>
+  {% assign first = ep.clips.first %}
+  <audio id="pod-audio" controls preload="none" src="{{ ep.media_url }}#t={{ first.start | default: first.t }}"></audio>
 </div>
 
 {% for clip in ep.clips %}
@@ -35,8 +36,12 @@ layout: default
 
 <script>
   const audio = document.getElementById('pod-audio');
+  // Some browsers drop a currentTime set before the stream is seekable,
+  // so seek again once playback has started if it did not stick.
   function playAt(t) {
-    audio.preload = 'auto';
+    audio.addEventListener('playing', () => {
+      if (Math.abs(audio.currentTime - t) > 2) audio.currentTime = t;
+    }, { once: true });
     const seek = () => { audio.currentTime = t; audio.play(); };
     if (audio.readyState >= 1) seek();
     else { audio.addEventListener('loadedmetadata', seek, { once: true }); audio.load(); }
