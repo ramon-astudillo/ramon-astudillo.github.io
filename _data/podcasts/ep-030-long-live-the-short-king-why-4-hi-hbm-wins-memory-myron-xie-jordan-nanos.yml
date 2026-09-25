@@ -5,7 +5,7 @@ media_url: https://anchor.fm/s/10fbee758/podcast/play/125723716/https%3A%2F%2Fd3
 clips:
 - t: 144
   note: ''
-  start: 99
+  start: 142
   quote: I guess Hopper or Ampere era, 8-HI was expanded. And then with Blackwell Ultra, they moved to
     12-HI, so it's having 12 layers of DRAM dies in a HBM stack. So you basically increase your capacity
     by 50% over 8-HI. And then the presumption from there was that you keep going taller. So the industry
@@ -13,7 +13,7 @@ clips:
     Nvidia, when they originally previewed Ruben Ultra to people at GTC last year, they said that...
 - t: 1094
   note: The whole Rubin having 192MB instead of 1T HPM
-  start: 1049
+  start: 1092
   quote: Data wires between the cube and the compute die. Depending on whether it's 4-HI, 8-HI, 12-HI,
     these IOs are divided across the stack. Each cube, you can support up to 512 of these signal IOs.
     So you need 4 to max that for utilization of that whole year in 2048. But of course, because the suppliers,

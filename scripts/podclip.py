@@ -91,6 +91,8 @@ def main():
                         help="seconds before the timestamp to transcribe")
     parser.add_argument("--after", type=int, default=10,
                         help="seconds after the timestamp to transcribe")
+    parser.add_argument("--margin", type=int, default=2,
+                        help="seconds before the timestamp where playback starts")
     parser.add_argument("--model", default="small.en", help="faster-whisper model")
     args = parser.parse_args()
 
@@ -110,13 +112,12 @@ def main():
             "clips": [],
         }
 
-    clip = {"t": share["t"], "note": share["note"]}
+    clip = {"t": share["t"], "start": max(0, share["t"] - args.margin), "note": share["note"]}
     if args.transcribe:
         start = max(0, share["t"] - args.before)
         segments = transcribe(share["media_url"], start, args.before + args.after,
                               args.model, f"{share['show']}. {share['title']}.")
         if segments:
-            clip["start"] = int(segments[0][0])
             clip["quote"] = " ".join(seg[2] for seg in segments)
 
     clips = [c for c in episode["clips"] if c["t"] != clip["t"]] + [clip]
