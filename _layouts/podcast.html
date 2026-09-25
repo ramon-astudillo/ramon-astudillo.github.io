@@ -1,0 +1,46 @@
+---
+layout: default
+---
+{% assign ep = site.data.podcasts[page.podcast] %}
+<style>
+  .pod-player { position: sticky; top: 0; z-index: 5; background: #fff; padding: 0.5rem 0; }
+  .pod-player audio { width: 100%; }
+  .clip { border-left: 3px solid var(--aurora-purple); padding: 0.2rem 0 0.2rem 1rem; margin: 1.5rem 0; text-align: left; }
+  .clip-play { font: inherit; font-weight: bold; color: #fff; background: var(--night-blue);
+               border: 0; border-radius: 0.3rem; padding: 0.15rem 0.6rem; cursor: pointer; }
+  .clip-play:hover { background: var(--twilight-blue); }
+  .clip blockquote { margin: 0.6rem 0 0; }
+  .clip-note { margin: 0.4rem 0 0; }
+</style>
+
+<p>[<a href="{{ '/' | relative_url }}">Home</a>] [<a href="{{ '/podcasts/' | relative_url }}">Podcasts</a>] [<a href="{{ ep.episode_url }}">Episode page</a>]</p>
+
+<div class="pod-player">
+  <audio id="pod-audio" controls preload="none" src="{{ ep.media_url }}"></audio>
+</div>
+
+{% for clip in ep.clips %}
+  {% assign start = clip.start | default: clip.t %}
+  {% assign h = start | divided_by: 3600 %}
+  {% assign m = start | modulo: 3600 | divided_by: 60 %}
+  {% assign s = start | modulo: 60 %}
+  <div class="clip" id="t{{ clip.t }}">
+    <button class="clip-play" data-t="{{ start }}">&#9654; {% if h > 0 %}{{ h }}:{% endif %}{% if m < 10 and h > 0 %}0{% endif %}{{ m }}:{% if s < 10 %}0{% endif %}{{ s }}</button>
+    {% if clip.quote %}<blockquote>{{ clip.quote }}</blockquote>{% endif %}
+    {% if clip.note and clip.note != "" %}<p class="clip-note">{{ clip.note | markdownify | remove: '<p>' | remove: '</p>' }}</p>{% endif %}
+  </div>
+{% endfor %}
+
+{{ content }}
+
+<script>
+  const audio = document.getElementById('pod-audio');
+  function playAt(t) {
+    audio.preload = 'auto';
+    const seek = () => { audio.currentTime = t; audio.play(); };
+    if (audio.readyState >= 1) seek();
+    else { audio.addEventListener('loadedmetadata', seek, { once: true }); audio.load(); }
+  }
+  document.querySelectorAll('.clip-play').forEach(b =>
+    b.addEventListener('click', () => playAt(Number(b.dataset.t))));
+</script>

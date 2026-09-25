@@ -1,0 +1,12 @@
+show: SemiAnalysis Weekly
+title: 'Ep. 030 - Long Live the Short King: Why 4-HI HBM Wins (Memory) | Myron Xie, Jordan Nanos'
+episode_url: https://podcasters.spotify.com/pod/show/jordan-nanos/episodes/Ep--030---Long-Live-the-Short-King-Why-4-HI-HBM-Wins-Memory--Myron-Xie--Jordan-Nanos-e3or9k4
+media_url: https://anchor.fm/s/10fbee758/podcast/play/125723716/https%3A%2F%2Fd3ctxlq1ktw2nl.cloudfront.net%2Fstaging%2F2026-8-14%2F431879632-44100-2-4fa28231b375e.mp3
+clips:
+- t: 1094
+  note: The whole Rubin having 192MB instead of 1T HPM
+  start: 1049
+  quote: Data wires between the cube and the compute die. Depending on whether it's 4-HI, 8-HI, 12-HI,
+    these IOs are divided across the stack. Each cube, you can support up to 512 of these signal IOs.
+    So you need 4 to max that for utilization of that whole year in 2048. But of course, because the suppliers,
+    they charge you for the capacity. Customers pay effectively on a dollar per gigabyte basis for HBM.
