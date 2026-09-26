@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{ ep.show }} @ {{ clip.time }}</title>
+  <title>{% if clip.title %}{{ clip.title }}{% else %}{{ ep.show }}{% endif %} @ {{ clip.time }}</title>
   <meta name="description" content="{{ clip.quote | default: clip.note | escape }}">
   <meta property="og:type" content="article">
   <meta property="og:site_name" content="Podcast notes · Ramón Astudillo">
-  <meta property="og:title" content="{{ ep.show | escape }} · {{ ep.title | escape }} @ {{ clip.time }}">
+  <meta property="og:title" content="{% if clip.title %}{{ clip.title | escape }} · {{ ep.show | escape }}{% else %}{{ ep.show | escape }} · {{ ep.title | escape }}{% endif %} @ {{ clip.time }}">
   <meta property="og:description" content="“{{ clip.quote | default: clip.note | escape }}”">
   <meta property="og:url" content="{{ page.url | absolute_url }}">
   {% if clip.quote %}<meta property="og:image" content="{{ card }}">
@@ -21,7 +21,8 @@
 <body>
 <main>
   <div class="meta">{{ ep.show }} · <a href="{{ ep.episode_url }}">episode page</a></div>
-  <h1>{{ ep.title }}</h1>
+  <h1>{{ clip.title | default: ep.title }}</h1>{% if clip.title and clip.title != ep.title %}
+  <div class="meta">{{ ep.title }}</div>{% endif %}
   <audio controls preload="metadata" src="{{ ep.media_url }}#t={{ clip.start | default: clip.t }}"></audio>
   {% if clip.quote %}<p class="transcript">{% if clip.before != "" %}…{{ clip.before }} {% endif %}<mark>{{ clip.quote }}</mark>{% if clip.after != "" %} {{ clip.after }}…{% endif %}</p>{% endif %}
   {% if clip.note and clip.note != "" %}<p class="note">{{ clip.note }}</p>{% endif %}
