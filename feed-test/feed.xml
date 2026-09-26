@@ -1,0 +1,27 @@
+---
+layout: null
+---
+{% assign post = site.pages | where: "url", "/feed-test/hello.html" | first %}{% capture img %}{{ '/feed-test/ibm.png' | absolute_url }}{% endcapture %}<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/">
+  <channel>
+    <title>Ramón Astudillo · feed test</title>
+    <link>{{ '/' | absolute_url }}</link>
+    <description>Test RSS feed for checking Slack /feed previews.</description>
+    <language>en</language>
+    <atom:link href="{{ page.url | absolute_url }}" rel="self" type="application/rss+xml"/>
+    <image>
+      <url>{{ img }}</url>
+      <title>Ramón Astudillo · feed test</title>
+      <link>{{ '/' | absolute_url }}</link>
+    </image>
+    <item>
+      <title>{{ post.title | xml_escape }}</title>
+      <link>{{ post.url | absolute_url }}</link>
+      <guid isPermaLink="true">{{ post.url | absolute_url }}</guid>
+      <pubDate>Sat, 26 Sep 2026 10:00:00 +0000</pubDate>
+      <description><![CDATA[<p>{{ post.summary }}</p><p><img src="{{ img }}" alt="IBM logo" width="600" height="315"></p>]]></description>
+      <enclosure url="{{ img }}" length="21201" type="image/png"/>
+      <media:content url="{{ img }}" medium="image" type="image/png" width="1200" height="630"/>
+    </item>
+  </channel>
+</rss>
