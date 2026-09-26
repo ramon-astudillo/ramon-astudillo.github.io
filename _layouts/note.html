@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ page.title }}</title>
+  <meta name="description" content="{{ page.comment | normalize_whitespace | escape }}">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Notes · Ramón Astudillo">
+  <meta property="og:title" content="{{ page.title | escape }}">
+  <meta property="og:description" content="{{ page.comment | normalize_whitespace | escape }}">
+  <meta property="og:url" content="{{ page.url | absolute_url }}">
+  {% if page.image and page.image != "" %}<meta property="og:image" content="{{ page.image | escape }}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="{{ page.image | escape }}">{% endif %}
+  <link rel="alternate" type="application/rss+xml" title="Notes · Ramón Astudillo" href="{{ '/notes/ramon_astudillo_ai_notes.xml' | relative_url }}">
+  <link rel="icon" type="image/png" href="{{ '/menger.png' | relative_url }}">
+  <style>
+    :root { --bg: #ffffff; --text: #1b1f24; --muted: #5d6673; --line: #d8dde3; --accent: #1f6feb; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #0f1216; --text: #e6e9ee; --muted: #9aa4b1; --line: #2b323b; --accent: #4c8dff; } }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 17px/1.55 system-ui, sans-serif; }
+    main { max-width: 40rem; margin: 2rem auto; padding: 0 16px; }
+    h1 { font-size: 1.5rem; line-height: 1.25; }
+    .comment { white-space: pre-wrap; }
+    a { color: var(--accent); }
+    .card { display: block; border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
+      text-decoration: none; color: inherit; margin: 1.5rem 0; }
+    .card img { display: block; width: 100%; max-height: 22rem; object-fit: cover; }
+    .card div { padding: 10px 14px; }
+    .site { font-size: 14px; color: var(--muted); }
+    .url { font-size: 14px; color: var(--accent); overflow-wrap: anywhere; }
+    footer { font-size: 14px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 1rem; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>{{ page.title }}</h1>
+  {% if page.comment and page.comment != "" %}<p class="comment">{{ page.comment | escape }}</p>{% endif %}
+  <a class="card" href="{{ page.link | escape }}">
+    {% if page.image and page.image != "" %}<img src="{{ page.image | escape }}" alt="">{% endif %}
+    <div><div class="site">{{ page.site_name }}</div><div class="url">{{ page.link | escape }}</div></div>
+  </a>
+  <footer>{{ page.date | date: "%-d %b %Y" }} · <a href="{{ '/notes/ramon_astudillo_ai_notes.xml' | relative_url }}">RSS</a> · <a href="{{ '/' | relative_url }}">Ramón Astudillo</a></footer>
+</main>
+</body>
+</html>

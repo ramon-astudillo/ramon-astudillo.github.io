@@ -1,0 +1,31 @@
+---
+layout: null
+---
+{% assign links = site.pages | where: "layout", "note" %}{% assign clips = site.pages | where: "layout", "clip" %}{% assign notes = links | concat: clips | sort: "date" | reverse %}<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/">
+  <channel>
+    <title>Notes · Ramón Astudillo</title>
+    <link>{{ '/' | absolute_url }}</link>
+    <description>Links and podcast moments, annotated.</description>
+    <language>en</language>
+    <atom:link href="{{ page.url | absolute_url }}" rel="self" type="application/rss+xml"/>
+    {% for note in notes limit: 50 %}{% if note.layout == 'clip' %}{% assign ep = site.data.podcasts[note.podcast] %}{% assign clip = ep.clips | where: "t", note.t | first %}{% capture image %}{% if clip.quote %}{{ '/notes/audio/' | append: note.podcast | append: '/' | append: clip.t | append: '.png' | absolute_url }}{% endif %}{% endcapture %}
+    <item>
+      <title>🎧 {{ ep.show | xml_escape }} @ {{ clip.time }}: {{ ep.title | xml_escape }}</title>
+      <link>{{ note.url | absolute_url }}</link>
+      <guid isPermaLink="true">{{ note.url | absolute_url }}</guid>
+      <pubDate>{{ note.date | date_to_rfc822 }}</pubDate>
+      <description><![CDATA[{% if clip.quote %}<p>“{{ clip.quote | escape }}”</p>{% endif %}{% if clip.note and clip.note != "" %}<p>{{ clip.note | escape }}</p>{% endif %}{% if image != "" %}<p><img src="{{ image }}" alt=""></p>{% endif %}]]></description>
+      {% if image != "" %}<media:content url="{{ image }}" medium="image" type="image/png" width="1200" height="630"/>{% endif %}
+    </item>{% else %}
+    <item>
+      <title>{{ note.title | xml_escape }}</title>
+      <link>{{ note.url | absolute_url }}</link>
+      <guid isPermaLink="true">{{ note.url | absolute_url }}</guid>
+      <pubDate>{{ note.date | date_to_rfc822 }}</pubDate>
+      <description><![CDATA[{% if note.comment != "" %}<p>{{ note.comment | escape | newline_to_br }}</p>{% endif %}<p><a href="{{ note.link | escape }}">{{ note.link | escape }}</a></p>{% if note.image != "" %}<p><img src="{{ note.image | escape }}" alt=""></p>{% endif %}]]></description>
+      {% if note.image != "" %}<media:content url="{{ note.image | xml_escape }}" medium="image"/>{% endif %}
+    </item>{% endif %}
+    {% endfor %}
+  </channel>
+</rss>

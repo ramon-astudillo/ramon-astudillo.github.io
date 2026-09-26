@@ -20,12 +20,12 @@
   <h1>{{ ep.title }}</h1>
   {% for clip in ep.clips %}
   <div class="clip">
-    <a class="time" href="{{ '/podcasts/' | append: page.podcast | append: '/' | append: clip.t | relative_url }}">▶ {{ clip.time }}</a>
+    <a class="time" href="{{ '/notes/audio/' | append: page.podcast | append: '/' | append: clip.t | relative_url }}">▶ {{ clip.time }}</a>
     {% if clip.quote %}<p><mark>{{ clip.quote }}</mark></p>{% endif %}
     {% if clip.note and clip.note != "" %}<p class="note">{{ clip.note }}</p>{% endif %}
   </div>
   {% endfor %}
-  <footer><a href="{{ '/podcasts/' | relative_url }}">all podcasts</a> · <a href="{{ '/' | relative_url }}">Ramón Astudillo</a></footer>
+  <footer><a href="{{ '/notes/audio/' | relative_url }}">all podcasts</a> · <a href="{{ '/' | relative_url }}">Ramón Astudillo</a></footer>
 </main>
 </body>
 </html>

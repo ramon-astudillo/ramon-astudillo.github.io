@@ -2,3 +2,5 @@ theme: jekyll-theme-cayman
 title: "Ramón Fernandez Astudillo"
 description: "Principal Research Scientist at IBM Research AI"
 url: "https://ramon-astudillo.github.io"
+plugins:
+  - jekyll-redirect-from

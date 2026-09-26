@@ -1,4 +1,4 @@
-{% assign ep = site.data.podcasts[page.podcast] %}{% assign clip = ep.clips | where: "t", page.t | first %}{% capture card %}{{ '/podcasts/' | append: page.podcast | append: '/' | append: clip.t | append: '.png' | absolute_url }}{% endcapture %}<!DOCTYPE html>
+{% assign ep = site.data.podcasts[page.podcast] %}{% assign clip = ep.clips | where: "t", page.t | first %}{% capture card %}{{ '/notes/audio/' | append: page.podcast | append: '/' | append: clip.t | append: '.png' | absolute_url }}{% endcapture %}<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -25,7 +25,7 @@
   <audio controls preload="metadata" src="{{ ep.media_url }}#t={{ clip.start | default: clip.t }}"></audio>
   {% if clip.quote %}<p class="transcript">{% if clip.before != "" %}…{{ clip.before }} {% endif %}<mark>{{ clip.quote }}</mark>{% if clip.after != "" %} {{ clip.after }}…{% endif %}</p>{% endif %}
   {% if clip.note and clip.note != "" %}<p class="note">{{ clip.note }}</p>{% endif %}
-  <footer>▶ {{ clip.time }} · <a href="{{ '/podcasts/' | append: page.podcast | relative_url }}">all notes on this episode</a> · <a href="{{ '/' | relative_url }}">Ramón Astudillo</a></footer>
+  <footer>▶ {{ clip.time }} · <a href="{{ '/notes/audio/' | append: page.podcast | relative_url }}">all notes on this episode</a> · <a href="{{ '/' | relative_url }}">Ramón Astudillo</a></footer>
 </main>
 <script>
   // Re-seek once playing in case the browser ignored the #t= offset.

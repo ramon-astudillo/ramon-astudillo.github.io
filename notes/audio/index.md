@@ -1,9 +1,11 @@
 ---
 title: Podcast notes
 description: Moments worth going back to
+redirect_from:
+- /podcasts/
 ---
 
-[<a href="../">Home</a>]
+[<a href="../../">Home</a>]
 
 {% assign episodes = site.data.podcasts | sort %}
 <ul>
