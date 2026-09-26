@@ -1,33 +1,6 @@
 ---
-layout: null
+layout: feed-test
 title: "Test post: does the preview work?"
 summary: "A throwaway test item for the Slack /feed integration. If you can see the IBM logo in the unfurl, link previews work."
+date: 2026-09-26 10:00:00 +0000
 ---
-{% capture img %}{{ '/feed-test/ibm.png' | absolute_url }}{% endcapture %}<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{ page.title }}</title>
-  <meta name="description" content="{{ page.summary | escape }}">
-  <meta property="og:type" content="article">
-  <meta property="og:site_name" content="Ramón Astudillo">
-  <meta property="og:title" content="{{ page.title | escape }}">
-  <meta property="og:description" content="{{ page.summary | escape }}">
-  <meta property="og:url" content="{{ page.url | absolute_url }}">
-  <meta property="og:image" content="{{ img }}">
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:image" content="{{ img }}">
-  <link rel="alternate" type="application/rss+xml" title="Feed test" href="{{ '/feed-test/feed.xml' | relative_url }}">
-  <link rel="icon" type="image/png" href="{{ '/menger.png' | relative_url }}">
-  <style>body{font-family:system-ui,sans-serif;max-width:40rem;margin:2rem auto;padding:0 16px;line-height:1.5}img{max-width:100%}</style>
-</head>
-<body>
-  <h1>{{ page.title }}</h1>
-  <p>{{ page.summary }}</p>
-  <img src="{{ img }}" alt="IBM logo" width="1200" height="630">
-  <p><a href="{{ '/' | relative_url }}">Ramón Astudillo</a></p>
-</body>
-</html>
