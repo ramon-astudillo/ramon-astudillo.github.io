@@ -194,8 +194,9 @@
      keeps the border easing, since .pressing rides along with .dragging. */
   .todo-item.dragging { transition: border-color 0.45s linear; }
   /* The press "charging" cue: the border warms to the accent over roughly the
-     hold duration. On Android the vibrate() on completion confirms it landed;
-     iOS Safari has no vibrate, so this is the whole feedback there. It tints
+     hold duration, and stays there once the press is armed — lifting the
+     finger then opens the menu. On Android a vibrate() marks the moment it
+     arms; iOS Safari has no vibrate, so this is the whole feedback there. It tints
      the border rather than scaling, because the row's `transform` belongs to
      the swipe gesture, which sets it inline. */
   .todo-item.pressing { border-color: var(--accent); }

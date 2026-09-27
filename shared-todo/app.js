@@ -565,24 +565,18 @@ function renderRow(entity, { isSub, onToggle, onMenu, onRowClick, onDelete, onAs
   if (onRowClick) row.onclick = onRowClick;
   else row.classList.add("no-row-click");
 
-  // Long press is a *touch* idiom; a right click is the desktop equivalent,
-  // and preventDefault also keeps the native menu away on the platforms that
-  // raise contextmenu from the long press itself (Android Chrome does — the
-  // dedupe in triggerGestureEdit is what stops that opening the panel twice).
-  //
-  // That platform contextmenu is why this needs the same "not on a control"
-  // guard as the press timer, and can't rely on attachDragReorder's
-  // stopPropagation: reordering starts by holding the drag handle, and the
-  // hold raises contextmenu on the handle, which bubbles here as its own
-  // event — opening the menu in the middle of a drag. preventDefault
-  // still runs for those, so the native menu stays suppressed either way.
-  //
-  // A genuine right click (button 2) is followed by no click event, so it
-  // must not arm the swallow — that would eat the user's next real tap.
+  // Long press is a *touch* idiom; a right click is the desktop equivalent.
+  // preventDefault runs for every contextmenu, which keeps the native menu
+  // away on the platforms that raise one from a touch long press (Android
+  // Chrome does), but only a mouse's opens ours: a touch press is the
+  // timer's in attachSwipeGestures, and Android's contextmenu also fires off
+  // the hold that starts a reorder on the drag handle — which is how the
+  // menu used to open mid-drag. The "not on a control" guard covers a right
+  // click on the handle or the radio.
   row.addEventListener("contextmenu", (e) => {
     e.preventDefault();
-    if (e.target.closest("button")) return;
-    triggerGestureEdit(onMenu, e.button !== 2);
+    if (lastPointerType !== "mouse" || e.target.closest("button")) return;
+    openMenuFromGesture(onMenu, false);
   });
 
   wrap.appendChild(row);
@@ -639,8 +633,7 @@ function exportEntityMarkdown(entity) {
 // Panel opened by swipe-right (see attachSwipeGestures's onAssignOpen),
 // listing every registered device identity as a tappable chip; picking one
 // calls onAssign(userId) and an already-assigned entity also gets an
-// "Unassign" chip. Shared by top-level todos and sub-todos, and by the
-// action menu's Assign… view (see showAssignView).
+// "Unassign" chip. Shared by top-level todos and sub-todos.
 function renderAssignPanel(entity, onAssign) {
   const panel = document.createElement("div");
   panel.className = "assign-panel";
@@ -695,7 +688,8 @@ function renderAssignPanel(entity, onAssign) {
 //
 // Only what is legal for the row is offered, rather than offering everything
 // and refusing: no Wrap on a sub-item (nesting is one level deep), no
-// deadline on a note, Bold only on a note.
+// deadline on a note, Bold only on a note. Assign and Delete are not here at
+// all: the two swipes already are those, one gesture away.
 let menuCloseHook = null; // the deadline view's "flush and offer undo", run on any close
 
 function closeActionMenu() {
@@ -735,14 +729,22 @@ function openActionMenu(ref) {
   }
   actions.push(
     [entity.urgent ? "Not urgent" : "Mark urgent", now(() => editWithUndo(ref, { urgent: !entity.urgent }, entity.urgent ? "No longer urgent" : "Marked urgent"))],
-    ["Assign…", () => showAssignView(ref)],
     ["Copy text", now(() => copyEntityText(entity))],
     ["Export as Markdown", now(() => exportEntityMarkdown(entity))],
   );
   if (!ref.parentId) {
-    actions.push(["Wrap in new parent…", () => showTextView(ref, "New parent for “" + entity.text + "”", "", (v) => promoteToSuper(ref.id, v))]);
+    actions.push(["Wrap in new parent…", () => showTextView(ref, "New parent for “" + entity.text + "”", "", (v) => promoteToSuper([ref.id], v))]);
+    // "Below" is as the list is drawn, since that is what the user is looking
+    // at when they pick it — under a sort that is not the stored order.
+    const shown = sortedForDisplay(todos, false);
+    const below = shown.slice(shown.findIndex((t) => t.id === ref.id));
+    if (below.length > 1) {
+      actions.push([
+        "Wrap this and the " + (below.length - 1) + " below in new parent…",
+        () => showTextView(ref, "New parent for “" + entity.text + "” and the " + (below.length - 1) + " below", "", (v) => promoteToSuper(below.map((t) => t.id), v)),
+      ]);
+    }
   }
-  actions.push(["Delete", now(() => ref.parentId ? deleteSubTodoWithUndo(ref.parentId, ref.id) : deleteTodoWithUndo(ref.id)), "action-item danger"]);
 
   const sheet = el("actionSheet");
   sheet.innerHTML = "";
@@ -845,15 +847,6 @@ function showDeadlineView(ref) {
       onClick: () => applyEdit(editOp(ref, before)),
     });
   };
-}
-
-function showAssignView(ref) {
-  const entity = findEntity(ref);
-  if (!entity) return;
-  const sheet = el("actionSheet");
-  sheet.innerHTML = "";
-  sheet.appendChild(sheetTitle("Assign “" + entity.text + "”"));
-  sheet.appendChild(renderAssignPanel(entity, (userId) => { closeActionMenu(); assignWithUndo(ref, userId); }));
 }
 
 function renderTodoItem(todo) {
@@ -980,49 +973,50 @@ function renderChildrenSection(todo) {
 // A right swipe past the same threshold instead opens the assignee picker
 // (see onAssignOpen/renderAssignPanel) and snaps back to place, since picking
 // a person is a second step, not something the swipe alone can express.
-// A press held past LONG_PRESS_MS without moving instead opens the row's
-// action menu (`onLongPress`, see openActionMenu) — the gesture that
-// replaced the old edit pencil. It shares this function's pointer bookkeeping rather than getting
+// A press held past LONG_PRESS_MS without moving *arms* the row's action
+// menu (`onLongPress`, see openActionMenu) — the gesture that replaced the
+// old edit pencil — and the menu opens on release, provided nothing moved in
+// between. Opening on the timer instead meant a press that paused before
+// turning into a scroll, a swipe or a drag opened the menu under the finger.
+// It shares this function's pointer bookkeeping rather than getting
 // listeners of its own, because the two must agree on one thing: any move
 // past the deadzone is a swipe or a scroll, never an edit.
 // Gesture state is closure-local per row, not shared module state — except
-// the long press's dedupe/click-swallow, which has to outlive the row it
-// started on (see triggerGestureEdit).
+// the click-swallow, which has to outlive the row it started on (see
+// openMenuFromGesture).
 const SWIPE_DEADZONE = 8;
 const SWIPE_THRESHOLD = 80;
 // Deliberately under the ~500ms most platforms use, because iOS Safari fires
 // pointercancel more eagerly than Android and a longer hold there is more
 // likely to be swallowed before it completes.
 const LONG_PRESS_MS = 450;
-// Only has to outlast the gap between the timer firing and the platform's own
-// contextmenu landing off the same press — not the press itself, which may be
-// held for seconds (the synthesized click is handled separately below).
-const LONG_PRESS_DEDUPE_MS = 400;
-let lastGestureEditAt = 0;
+
+// What started the latest press, read by the rows' contextmenu handler.
+// Android raises its own contextmenu off a touch long press — on the drag
+// handle too, whose pointerdown never reaches the row — and that one has to
+// be ignored, since a touch press is already handled by the timer above.
+// Recorded in the capture phase so a control that stops propagation (the
+// drag handle does) can't hide it.
+let lastPointerType = "mouse";
+document.addEventListener("pointerdown", (e) => { lastPointerType = e.pointerType; }, true);
 
 // Single entry point for "open this row's action menu by gesture", shared by
-// the held-press timer and the contextmenu handler. Both can fire for one
-// press on Android (the platform raises contextmenu off the same long press,
-// and which lands first isn't guaranteed), so the second one through the door
-// has to be dropped — otherwise it rebuilds the menu under the finger.
+// the press release and a mouse right click.
 //
-// The release then synthesizes a click, and by then the menu sheet is what
-// sits under the finger: unswallowed, that click would pick whichever option
-// the press happened to be held over, or hit the backdrop and close the menu
-// the instant it opened. It can't be guarded on the row, which the click no
-// longer reaches. Hence a one-shot capture listener on the document — and no
-// time window, since a press held for five seconds still produces its click
-// on release.
-function triggerGestureEdit(onMenu, swallowClick) {
-  const now = Date.now();
-  if (now - lastGestureEditAt < LONG_PRESS_DEDUPE_MS) return;
-  lastGestureEditAt = now;
+// The release synthesizes a click after pointerup, and by then the menu
+// sheet is what sits under the finger: unswallowed, that click would pick
+// whichever option the press ended over, or hit the backdrop and close the
+// menu the instant it opened. It can't be guarded on the row, which the
+// click no longer reaches. Hence a one-shot capture listener on the
+// document. A right click is followed by no click, so it must not arm the
+// swallow — that would eat the user's next real tap.
+function openMenuFromGesture(onMenu, swallowClick) {
   if (swallowClick) {
     const swallow = (e) => { e.stopPropagation(); e.preventDefault(); };
     document.addEventListener("click", swallow, { capture: true, once: true });
-    // A press that ends outside any row (dragged off, or cancelled by the
-    // system) synthesizes no click at all, which would leave the listener
-    // armed to eat the user's next real tap.
+    // A release that synthesizes no click (some platforms skip it after a
+    // long hold) would otherwise leave the listener armed to eat the user's
+    // next real tap.
     setTimeout(() => document.removeEventListener("click", swallow, true), 1000);
   }
   onMenu();
@@ -1034,10 +1028,12 @@ function attachSwipeGestures(rowEl, { onDelete, onAssignOpen, onLongPress, delet
   let dx = 0;
   let suppressClick = false;
   let pressTimer = null;
+  let armed = false; // held long enough; the menu opens on release, if nothing moved since
 
   const cancelLongPress = () => {
     if (pressTimer !== null) clearTimeout(pressTimer);
     pressTimer = null;
+    armed = false;
     rowEl.classList.remove("pressing");
   };
 
@@ -1060,9 +1056,9 @@ function attachSwipeGestures(rowEl, { onDelete, onAssignOpen, onLongPress, delet
       // doesn't exist in iOS Safari — so the visual cue isn't optional there.
       rowEl.classList.add("pressing");
       pressTimer = setTimeout(() => {
-        cancelLongPress();
+        pressTimer = null;
+        armed = true;
         if (navigator.vibrate) navigator.vibrate(10);
-        triggerGestureEdit(onLongPress, true);
       }, LONG_PRESS_MS);
     }
   });
@@ -1102,7 +1098,12 @@ function attachSwipeGestures(rowEl, { onDelete, onAssignOpen, onLongPress, delet
   }, true);
 
   const finish = (e) => {
+    // Only a release opens the menu. A pointercancel means the browser took
+    // the gesture for a scroll, and any move past the deadzone has already
+    // disarmed it in pointermove above.
+    const open = armed && e.type === "pointerup";
     cancelLongPress();
+    if (open) openMenuFromGesture(onLongPress, true);
     if (startTime === 0) return;
     const elapsed = e.timeStamp - startTime;
     rowEl.classList.remove("dragging");
@@ -1774,6 +1775,23 @@ function applyOp(list, op) {
       parent.updated_at = op.now;
       break;
     }
+    // The general form of "wrapSuper" below, which only remains so ops queued
+    // by older builds still replay. The new parent takes the place of the
+    // first id (the pressed row); ids already gone are skipped.
+    case "wrapMany": {
+      const picked = op.ids.map((id) => list.find((x) => x.id === id)).filter(Boolean);
+      if (picked.length === 0) break;
+      const at = list.indexOf(picked[0]);
+      const kept = list.filter((x) => !picked.includes(x));
+      const pos = kept.filter((x) => list.indexOf(x) < at).length;
+      for (const child of picked) {
+        delete child.children; // depth is capped at 2
+        child.updated_at = op.now;
+      }
+      kept.splice(pos, 0, { ...op.newParent, children: picked });
+      list.splice(0, list.length, ...kept);
+      break;
+    }
     case "wrapSuper": {
       const idx = list.findIndex((x) => x.id === op.id);
       if (idx === -1) break; // item was deleted/moved elsewhere before this op replayed
@@ -1937,45 +1955,54 @@ function addSubTodo(parentId, text) {
   applyEdit({ type: "addSub", parentId, now, todo });
 }
 
-// Wraps a top-level todo in a brand-new parent todo, demoting the original
-// to that parent's sole child. Depth is capped at 2 (children never have
-// children of their own), so if the item being wrapped already has
-// sub-items, those get dropped — confirm with the user before doing that.
-// Reached from the action menu's "Wrap in new parent…".
-function promoteToSuper(id, text) {
+// Wraps top-level todos in a brand-new parent todo, demoting them to its
+// children in the order given. That is one item for the menu's "Wrap in new
+// parent…" and the pressed row plus everything drawn below it for "Wrap this
+// and the N below…". Depth is capped at 2 (children never have children of
+// their own), so any sub-items the wrapped items hold get dropped — confirm
+// with the user before doing that.
+function promoteToSuper(ids, text) {
   const { icon, text: trimmed } = splitLeadingIcon(text);
   if (!trimmed) return;
-  const todo = todos.find((t) => t.id === id);
-  if (!todo) return;
-  if (todo.children && todo.children.length > 0) {
+  const picked = ids.map((id) => todos.find((t) => t.id === id)).filter(Boolean);
+  if (picked.length === 0) return;
+  const dropped = picked.reduce((n, t) => n + (t.children ? t.children.length : 0), 0);
+  if (dropped > 0) {
+    const what = picked.length === 1 ? "This item has " : "These items have ";
     const ok = confirm(
-      "This item has " + todo.children.length + " sub-item(s). Making it a sub-item of a new item will remove them, since items can only be nested one level deep. Continue?"
+      what + dropped + " sub-item(s) between them. Nesting them under a new item will remove those, since items can only be nested one level deep. Continue?"
     );
     if (!ok) return;
   }
-  // Snapshotted with its sub-items, so Undo gives back the ones the wrap
-  // dropped too — which is the part of this edit most worth undoing.
-  const index = todos.indexOf(todo);
-  const snapshot = JSON.parse(JSON.stringify(todo));
+  // Snapshotted with their sub-items and stored positions, so Undo gives back
+  // exactly the list that was there — including the sub-items the wrap
+  // dropped, which is the part of this edit most worth undoing.
+  const snapshots = picked
+    .map((t) => ({ index: todos.indexOf(t), todo: JSON.parse(JSON.stringify(t)) }))
+    .sort((x, y) => x.index - y.index);
   const now = new Date().toISOString();
   const newParentId = crypto.randomUUID();
+  // Opened, so the rows land on screen inside it rather than vanishing into a
+  // collapsed row — a gesture that makes rows disappear reads as a delete.
+  shownChildrenIds.add(newParentId);
   applyEdit({
-    type: "wrapSuper",
-    id,
+    type: "wrapMany",
+    ids: picked.map((t) => t.id),
     now,
     newParent: Object.assign(
       { id: newParentId, text: trimmed, done: false, created_at: now, updated_at: now },
       icon ? { icon } : null
     ),
   });
-  // Undone as a delete of the new parent plus a restore of the original, the
-  // same pair a delete's Undo is built from, so no new op type is needed.
-  toast('Wrapped in "' + trimmed + '"', {
+  // Undone as a delete of the new parent plus a restore of each original, the
+  // ops a delete's Undo is built from. Restored in ascending stored position,
+  // so each index is correct at the moment it is reinserted.
+  toast('Wrapped ' + (picked.length === 1 ? "" : picked.length + " items ") + 'in "' + trimmed + '"', {
     label: "Undo",
     onClick: () => {
       shownChildrenIds.delete(newParentId);
       applyEdit({ type: "delete", id: newParentId });
-      applyEdit({ type: "restore", index, todo: snapshot });
+      for (const { index, todo } of snapshots) applyEdit({ type: "restore", index, todo });
     },
   });
 }
