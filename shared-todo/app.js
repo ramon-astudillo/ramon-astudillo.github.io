@@ -65,8 +65,7 @@ function loadPersistedQueue(boardId) {
 function clearPersistedQueue(boardId) {
   localStorage.removeItem(queueKey(boardId));
 }
-const editingIds = new Set(); // todo/sub-todo IDs whose rename/date edit panel is open (local UI state, not synced; ids are UUIDs so one Set covers both levels)
-const assigningIds = new Set(); // todo/sub-todo IDs whose assignee-picker panel is open (local UI state, not synced; opened by swipe-right)
+const assigningIds = new Set(); // todo/sub-todo IDs whose assignee-picker panel is open (local UI state, not synced; opened by swipe-right; ids are UUIDs so one Set covers both levels)
 const shownChildrenIds = new Set(); // top-level todo IDs whose sub-todo list + add-sub-todo form is shown (local UI state, not synced)
 const noteAddMode = new Set(); // top-level todo IDs whose add-sub-item form is currently in "add note" mode (local UI state, not synced)
 
@@ -452,7 +451,8 @@ const DRAG_HANDLE_SVG = '<svg viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.5">
 
 // Builds the swipeable row (drag handle + radio + text + days badge +
 // assignee avatar) shared by top-level todos and sub-todos. Long-pressing
-// the row opens the rename/date panel — there is no edit icon; `onRowClick`
+// the row opens its action menu (`onMenu`, see openActionMenu), which is
+// where every edit lives — there is no edit icon; `onRowClick`
 // (top-level only) toggles the sub-todo list separately, and the two are
 // independent so opening one doesn't force the other open too. Swiping left
 // past a threshold deletes the row; swiping right (only if `onAssignOpen`
@@ -460,7 +460,7 @@ const DRAG_HANDLE_SVG = '<svg viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.5">
 // { el, handle } rather than just the row element so callers can wire the
 // handle to attachDragReorder against the outer <li>, which drag needs to
 // translate as a whole (see renderTodoItem / renderChildrenSection).
-function renderRow(entity, { isSub, onToggle, onEditToggle, onRowClick, onDelete, onAssignOpen }) {
+function renderRow(entity, { isSub, onToggle, onMenu, onRowClick, onDelete, onAssignOpen }) {
   const wrap = document.createElement("div");
   wrap.className = "swipe-wrap";
 
@@ -574,7 +574,7 @@ function renderRow(entity, { isSub, onToggle, onEditToggle, onRowClick, onDelete
   // guard as the press timer, and can't rely on attachDragReorder's
   // stopPropagation: reordering starts by holding the drag handle, and the
   // hold raises contextmenu on the handle, which bubbles here as its own
-  // event — opening the edit panel in the middle of a drag. preventDefault
+  // event — opening the menu in the middle of a drag. preventDefault
   // still runs for those, so the native menu stays suppressed either way.
   //
   // A genuine right click (button 2) is followed by no click event, so it
@@ -582,11 +582,11 @@ function renderRow(entity, { isSub, onToggle, onEditToggle, onRowClick, onDelete
   row.addEventListener("contextmenu", (e) => {
     e.preventDefault();
     if (e.target.closest("button")) return;
-    triggerGestureEdit(onEditToggle, e.button !== 2);
+    triggerGestureEdit(onMenu, e.button !== 2);
   });
 
   wrap.appendChild(row);
-  attachSwipeGestures(row, { onDelete, onAssignOpen, onLongPress: onEditToggle, deleteBg, assignBg });
+  attachSwipeGestures(row, { onDelete, onAssignOpen, onLongPress: onMenu, deleteBg, assignBg });
   return { el: wrap, handle };
 }
 
@@ -639,8 +639,8 @@ function exportEntityMarkdown(entity) {
 // Panel opened by swipe-right (see attachSwipeGestures's onAssignOpen),
 // listing every registered device identity as a tappable chip; picking one
 // calls onAssign(userId) and an already-assigned entity also gets an
-// "Unassign" chip. Shared by top-level todos and sub-todos, same as
-// renderEditForm below.
+// "Unassign" chip. Shared by top-level todos and sub-todos, and by the
+// action menu's Assign… view (see showAssignView).
 function renderAssignPanel(entity, onAssign) {
   const panel = document.createElement("div");
   panel.className = "assign-panel";
@@ -681,179 +681,189 @@ function renderAssignPanel(entity, onAssign) {
   return panel;
 }
 
-// The three non-Save actions every edit panel carries, in one place since
-// renderEditForm and renderNoteEditForm both need exactly the same wiring:
-// Copy (this item's text alone), Export (Markdown, sub-items included), and
-// Urgent — a toggle whose new value rides along in the save patch, like the
-// note form's Bold, so nothing is written until Save is pressed.
-function makeCopyExportButtons(entity) {
-  const copyBtn = document.createElement("button");
-  copyBtn.type = "button";
-  copyBtn.className = "copy-btn";
-  copyBtn.textContent = "Copy";
-  copyBtn.title = "Copy this item's text";
-  copyBtn.onclick = () => copyEntityText(entity);
+// The long-press action menu: every edit to an item goes through here.
+// Each option does one thing and lands as soon as it is picked — there is no
+// Save, and so no half-edited state for a sync to overwrite — and each edit
+// offers an Undo toast in exchange (see editWithUndo). Options that need
+// input (text, a deadline, a person) swap the sheet to a small view of their
+// own rather than opening a second sheet.
+//
+// It lives outside the list, in static markup, so the render() a background
+// sync triggers can't rebuild it mid-typing the way it rebuilt the inline
+// edit panel it replaced. The item is held as a ref and looked up again when
+// an option runs, since that sync also replaces `todos`.
+//
+// Only what is legal for the row is offered, rather than offering everything
+// and refusing: no Wrap on a sub-item (nesting is one level deep), no
+// deadline on a note, Bold only on a note.
+let menuCloseHook = null; // the deadline view's "flush and offer undo", run on any close
 
-  const exportBtn = document.createElement("button");
-  exportBtn.type = "button";
-  exportBtn.className = "copy-btn";
-  exportBtn.textContent = "Export";
-  exportBtn.title = "Copy as Markdown, with sub-items";
-  exportBtn.onclick = () => exportEntityMarkdown(entity);
-
-  return [copyBtn, exportBtn];
+function closeActionMenu() {
+  const hook = menuCloseHook;
+  menuCloseHook = null;
+  el("actionPanel").classList.remove("open");
+  el("actionSheet").innerHTML = "";
+  if (hook) hook();
 }
 
-// Returns the button plus a getter for its current state, so the caller can
-// read it at submit time without tracking the flag itself.
-function makeUrgentToggle(entity) {
-  let urgent = !!entity.urgent;
+function sheetTitle(text) {
+  const h = document.createElement("h2");
+  h.textContent = text;
+  return h;
+}
+
+function sheetButton(label, onClick, cls) {
   const btn = document.createElement("button");
   btn.type = "button";
-  btn.className = "urgent-toggle-btn" + (urgent ? " active" : "");
-  btn.textContent = "!";
-  btn.title = "Urgent (red border, here and on the parent item)";
-  btn.onclick = () => {
-    urgent = !urgent;
-    btn.classList.toggle("active", urgent);
-  };
-  return { btn, get: () => urgent };
+  btn.className = cls || "action-item";
+  btn.textContent = label;
+  btn.onclick = onClick;
+  return btn;
 }
 
-// Shared rename + due-date/time form used by both top-level todos and
-// sub-todos. Time is optional and only meaningful when a date is set — if
-// the date is cleared, any time is dropped with it; if a date is set with no
-// time, callers treat that as start-of-day (00:00). The date/time pair sits
-// on its own row above the text input so neither competes with it for
-// width; there's no separate Cancel since tapping the edit pencil again
-// already closes this panel without saving.
-function renderEditForm(entity, onSave) {
+function openActionMenu(ref) {
+  const entity = findEntity(ref);
+  if (!entity) return;
+  const isNote = entity.type === "note";
+  // Immediate options close the sheet first, so the toast they raise isn't
+  // hidden behind it.
+  const now = (fn) => () => { closeActionMenu(); fn(); };
+  const actions = [["Edit text…", () => showTextView(ref, "Edit text", textWithIcon(entity), (v) => renameWithUndo(ref, v))]];
+  if (!isNote) actions.push([entity.due_date ? "Change deadline…" : "Set deadline…", () => showDeadlineView(ref)]);
+  if (isNote) {
+    actions.push([entity.bold ? "Not bold" : "Bold", now(() => editWithUndo(ref, { bold: !entity.bold }, entity.bold ? "Bold off" : "Bold on"))]);
+  }
+  actions.push(
+    [entity.urgent ? "Not urgent" : "Mark urgent", now(() => editWithUndo(ref, { urgent: !entity.urgent }, entity.urgent ? "No longer urgent" : "Marked urgent"))],
+    ["Assign…", () => showAssignView(ref)],
+    ["Copy text", now(() => copyEntityText(entity))],
+    ["Export as Markdown", now(() => exportEntityMarkdown(entity))],
+  );
+  if (!ref.parentId) {
+    actions.push(["Wrap in new parent…", () => showTextView(ref, "New parent for “" + entity.text + "”", "", (v) => promoteToSuper(ref.id, v))]);
+  }
+  actions.push(["Delete", now(() => ref.parentId ? deleteSubTodoWithUndo(ref.parentId, ref.id) : deleteTodoWithUndo(ref.id)), "action-item danger"]);
+
+  const sheet = el("actionSheet");
+  sheet.innerHTML = "";
+  sheet.appendChild(sheetTitle(textWithIcon(entity)));
+  const list = document.createElement("div");
+  list.className = "action-list";
+  for (const [label, run, cls] of actions) list.appendChild(sheetButton(label, run, cls));
+  sheet.appendChild(list);
+  el("actionPanel").classList.add("open");
+}
+
+// One text field. Typing is the one thing that can't land per keystroke, so
+// it keeps a commit — Enter or OK — but that is the whole of it.
+function showTextView(ref, title, initial, onSubmit) {
+  const sheet = el("actionSheet");
+  sheet.innerHTML = "";
+  sheet.appendChild(sheetTitle(title));
   const form = document.createElement("form");
-  form.className = "edit-form";
+  form.className = "action-form";
+  const input = document.createElement("input");
+  input.type = "text";
+  input.value = initial;
+  input.autocomplete = "off";
+  const btnRow = document.createElement("div");
+  btnRow.className = "action-btn-row";
+  const ok = sheetButton("OK", null, "action-btn accent");
+  ok.type = "submit";
+  btnRow.append(sheetButton("Cancel", closeActionMenu, "action-btn"), ok);
+  form.append(input, btnRow);
+  form.onsubmit = (e) => {
+    e.preventDefault();
+    const value = input.value;
+    closeActionMenu();
+    onSubmit(value);
+  };
+  sheet.appendChild(form);
+  input.focus();
+  input.setSelectionRange(input.value.length, input.value.length);
+}
 
-  const dateRow = document.createElement("div");
-  dateRow.className = "edit-date-row";
+// Date and time apply as they are picked, with no Save. Two things keep that
+// from turning into a stream of ops: a short debounce (typing a year into a
+// desktop date field fires `change` once per digit), and a single Undo raised
+// when the view closes, which goes back to the deadline it opened on however
+// many changes were made in between.
+function showDeadlineView(ref) {
+  const entity = findEntity(ref);
+  if (!entity) return;
+  const before = patchSnapshot(entity, { due_date: null });
+  let pending = null;
+  let timer = null;
+  const flush = () => {
+    clearTimeout(timer);
+    if (pending) applyEdit(editOp(ref, pending));
+    pending = null;
+  };
 
+  const sheet = el("actionSheet");
+  sheet.innerHTML = "";
+  sheet.appendChild(sheetTitle("Deadline"));
+  const form = document.createElement("div");
+  form.className = "action-form";
+  const row = document.createElement("div");
+  row.className = "action-date-row";
   const dateInput = document.createElement("input");
   dateInput.type = "date";
-  dateInput.className = "edit-date";
   dateInput.value = entity.due_date || "";
-
   const timeInput = document.createElement("input");
   timeInput.type = "time";
-  timeInput.className = "edit-time";
   timeInput.value = entity.due_time || "";
+  // A time means nothing without a date, and is dropped with it.
+  timeInput.disabled = !dateInput.value;
+  row.append(dateInput, timeInput);
 
-  dateRow.append(dateInput, timeInput);
-
-  const textInput = document.createElement("input");
-  textInput.type = "text";
-  textInput.className = "edit-text";
-  textInput.value = textWithIcon(entity);
-  textInput.required = true;
+  const schedule = () => {
+    if (!dateInput.value) timeInput.value = "";
+    timeInput.disabled = !dateInput.value;
+    pending = { due_date: dateInput.value || null, due_time: dateInput.value ? (timeInput.value || null) : null };
+    clearTimeout(timer);
+    timer = setTimeout(flush, 500);
+  };
+  dateInput.onchange = schedule;
+  timeInput.onchange = schedule;
 
   const btnRow = document.createElement("div");
-  btnRow.className = "edit-btn-row";
+  btnRow.className = "action-btn-row";
+  const clear = sheetButton("Clear deadline", () => { dateInput.value = ""; schedule(); closeActionMenu(); }, "action-btn");
+  btnRow.append(clear, sheetButton("Done", closeActionMenu, "action-btn accent"));
+  form.append(row, btnRow);
+  sheet.appendChild(form);
 
-  const saveBtn = document.createElement("button");
-  saveBtn.type = "submit";
-  saveBtn.textContent = "Save";
-
-  const urgent = makeUrgentToggle(entity);
-
-  btnRow.append(saveBtn, ...makeCopyExportButtons(entity), urgent.btn);
-
-  form.append(dateRow, textInput, btnRow);
-  form.onsubmit = (e) => {
-    e.preventDefault();
-    onSave({
-      text: textInput.value,
-      due_date: dateInput.value || null,
-      due_time: dateInput.value ? (timeInput.value || null) : null,
-      urgent: urgent.get(),
+  menuCloseHook = () => {
+    flush();
+    const after = findEntity(ref);
+    if (!after) return;
+    const now = patchSnapshot(after, { due_date: null });
+    if (now.due_date === before.due_date && now.due_time === before.due_time) return;
+    toast(now.due_date ? "Deadline set" : "Deadline cleared", {
+      label: "Undo",
+      onClick: () => applyEdit(editOp(ref, before)),
     });
   };
-  return form;
 }
 
-// Edit form for note-type sub-items: just text + a bold toggle, no
-// checkbox/date fields since notes are never "done" or due. No Cancel, same
-// reasoning as renderEditForm.
-function renderNoteEditForm(entity, onSave) {
-  const form = document.createElement("form");
-  form.className = "edit-form";
-
-  const textInput = document.createElement("input");
-  textInput.type = "text";
-  textInput.className = "edit-text";
-  textInput.value = textWithIcon(entity);
-  textInput.required = true;
-
-  let bold = !!entity.bold;
-  const boldBtn = document.createElement("button");
-  boldBtn.type = "button";
-  boldBtn.className = "bold-toggle-btn" + (bold ? " active" : "");
-  boldBtn.textContent = "B";
-  boldBtn.title = "Bold (for section separators)";
-  boldBtn.onclick = () => {
-    bold = !bold;
-    boldBtn.classList.toggle("active", bold);
-  };
-
-  const btnRow = document.createElement("div");
-  btnRow.className = "edit-btn-row";
-
-  const saveBtn = document.createElement("button");
-  saveBtn.type = "submit";
-  saveBtn.textContent = "Save";
-
-  const urgent = makeUrgentToggle(entity);
-
-  btnRow.append(boldBtn, saveBtn, ...makeCopyExportButtons(entity), urgent.btn);
-
-  form.append(textInput, btnRow);
-  form.onsubmit = (e) => {
-    e.preventDefault();
-    onSave({ text: textInput.value, bold, urgent: urgent.get() });
-  };
-  return form;
-}
-
-// The "add a super-item" input shown above a top-level row when it's
-// expanded, mirroring renderChildrenSection's add-sub-item form below it.
-// Submitting wraps `todo` in a brand-new parent via promoteToSuper.
-function renderParentSection(todo) {
-  const section = document.createElement("div");
-  section.className = "parent-section";
-
-  const addForm = document.createElement("form");
-  addForm.className = "super-add-row";
-
-  const addInput = document.createElement("input");
-  addInput.type = "text";
-  addInput.placeholder = "Add a super-item...";
-  addInput.autocomplete = "off";
-  addForm.onsubmit = (e) => {
-    e.preventDefault();
-    promoteToSuper(todo.id, addInput.value);
-    addInput.value = "";
-  };
-  addForm.appendChild(addInput);
-  section.appendChild(addForm);
-
-  return section;
+function showAssignView(ref) {
+  const entity = findEntity(ref);
+  if (!entity) return;
+  const sheet = el("actionSheet");
+  sheet.innerHTML = "";
+  sheet.appendChild(sheetTitle("Assign “" + entity.text + "”"));
+  sheet.appendChild(renderAssignPanel(entity, (userId) => { closeActionMenu(); assignWithUndo(ref, userId); }));
 }
 
 function renderTodoItem(todo) {
   const wrap = document.createElement("li");
   wrap.className = "todo-item-wrap";
 
-  if (shownChildrenIds.has(todo.id)) wrap.appendChild(renderParentSection(todo));
-
   const { el: rowEl, handle } = renderRow(todo, {
     isSub: false,
     onToggle: () => toggleTodo(todo.id),
-    onEditToggle: () => { editingIds.has(todo.id) ? editingIds.delete(todo.id) : editingIds.add(todo.id); render(); },
+    onMenu: () => openActionMenu({ id: todo.id, parentId: null }),
     onRowClick: () => { shownChildrenIds.has(todo.id) ? shownChildrenIds.delete(todo.id) : shownChildrenIds.add(todo.id); render(); },
     onDelete: () => deleteTodoWithUndo(todo.id),
     onAssignOpen: () => { assigningIds.has(todo.id) ? assigningIds.delete(todo.id) : assigningIds.add(todo.id); render(); },
@@ -866,18 +876,10 @@ function renderTodoItem(todo) {
     reorderTodo(todo.id, storedDropIndex(todos, todo.id, toIndex, false))
   );
 
-  if (editingIds.has(todo.id)) {
-    const panel = document.createElement("div");
-    panel.className = "todo-expand";
-    const onSave = (patch) => { editTodo(todo.id, patch); editingIds.delete(todo.id); render(); };
-    panel.appendChild(todo.type === "note" ? renderNoteEditForm(todo, onSave) : renderEditForm(todo, onSave));
-    wrap.appendChild(panel);
-  }
-
   if (assigningIds.has(todo.id)) {
     const panel = document.createElement("div");
     panel.className = "todo-expand";
-    panel.appendChild(renderAssignPanel(todo, (userId) => { assignTodo(todo.id, userId); assigningIds.delete(todo.id); render(); }));
+    panel.appendChild(renderAssignPanel(todo, (userId) => { assigningIds.delete(todo.id); render(); assignWithUndo({ id: todo.id, parentId: null }, userId); }));
     wrap.appendChild(panel);
   }
 
@@ -905,7 +907,7 @@ function renderChildrenSection(todo) {
       const { el: childRowEl, handle: childHandle } = renderRow(child, {
         isSub: true,
         onToggle: () => toggleSubTodo(todo.id, child.id),
-        onEditToggle: () => { editingIds.has(child.id) ? editingIds.delete(child.id) : editingIds.add(child.id); render(); },
+        onMenu: () => openActionMenu({ id: child.id, parentId: todo.id }),
         onDelete: () => deleteSubTodoWithUndo(todo.id, child.id),
         onAssignOpen: () => { assigningIds.has(child.id) ? assigningIds.delete(child.id) : assigningIds.add(child.id); render(); },
       });
@@ -919,27 +921,10 @@ function renderChildrenSection(todo) {
         reorderSubTodo(todo.id, child.id, storedDropIndex(parent.children || [], child.id, toIndex, true));
       });
 
-      if (editingIds.has(child.id)) {
-        const panel = document.createElement("div");
-        panel.className = "todo-expand";
-        panel.appendChild(
-          child.type === "note"
-            ? renderNoteEditForm(
-                child,
-                (patch) => { editSubNote(todo.id, child.id, patch); editingIds.delete(child.id); render(); }
-              )
-            : renderEditForm(
-                child,
-                (patch) => { editSubTodo(todo.id, child.id, patch); editingIds.delete(child.id); render(); }
-              )
-        );
-        li.appendChild(panel);
-      }
-
       if (assigningIds.has(child.id)) {
         const panel = document.createElement("div");
         panel.className = "todo-expand";
-        panel.appendChild(renderAssignPanel(child, (userId) => { assignSubTodo(todo.id, child.id, userId); assigningIds.delete(child.id); render(); }));
+        panel.appendChild(renderAssignPanel(child, (userId) => { assigningIds.delete(child.id); render(); assignWithUndo({ id: child.id, parentId: todo.id }, userId); }));
         li.appendChild(panel);
       }
 
@@ -996,8 +981,8 @@ function renderChildrenSection(todo) {
 // (see onAssignOpen/renderAssignPanel) and snaps back to place, since picking
 // a person is a second step, not something the swipe alone can express.
 // A press held past LONG_PRESS_MS without moving instead opens the row's
-// rename/date panel (`onLongPress`) — the gesture that replaced the old edit
-// pencil. It shares this function's pointer bookkeeping rather than getting
+// action menu (`onLongPress`, see openActionMenu) — the gesture that
+// replaced the old edit pencil. It shares this function's pointer bookkeeping rather than getting
 // listeners of its own, because the two must agree on one thing: any move
 // past the deadzone is a swipe or a scroll, never an edit.
 // Gesture state is closure-local per row, not shared module state — except
@@ -1015,20 +1000,20 @@ const LONG_PRESS_MS = 450;
 const LONG_PRESS_DEDUPE_MS = 400;
 let lastGestureEditAt = 0;
 
-// Single entry point for "open this row's edit panel by gesture", shared by
+// Single entry point for "open this row's action menu by gesture", shared by
 // the held-press timer and the contextmenu handler. Both can fire for one
 // press on Android (the platform raises contextmenu off the same long press,
 // and which lands first isn't guaranteed), so the second one through the door
-// has to be dropped — otherwise it toggles the panel straight closed again.
+// has to be dropped — otherwise it rebuilds the menu under the finger.
 //
-// The release then synthesizes a click, which would toggle the sub-todo list
-// on top of the edit panel we just opened. That can't be guarded on the row:
-// onEditToggle re-renders the list, so by the time the click is dispatched
-// this row is detached and the click lands on its freshly built replacement.
-// Hence a one-shot capture listener on the document, which outlives the
-// re-render — and no time window, since a press held for five seconds still
-// produces its click on release.
-function triggerGestureEdit(onEditToggle, swallowClick) {
+// The release then synthesizes a click, and by then the menu sheet is what
+// sits under the finger: unswallowed, that click would pick whichever option
+// the press happened to be held over, or hit the backdrop and close the menu
+// the instant it opened. It can't be guarded on the row, which the click no
+// longer reaches. Hence a one-shot capture listener on the document — and no
+// time window, since a press held for five seconds still produces its click
+// on release.
+function triggerGestureEdit(onMenu, swallowClick) {
   const now = Date.now();
   if (now - lastGestureEditAt < LONG_PRESS_DEDUPE_MS) return;
   lastGestureEditAt = now;
@@ -1040,7 +1025,7 @@ function triggerGestureEdit(onEditToggle, swallowClick) {
     // armed to eat the user's next real tap.
     setTimeout(() => document.removeEventListener("click", swallow, true), 1000);
   }
-  onEditToggle();
+  onMenu();
 }
 
 function attachSwipeGestures(rowEl, { onDelete, onAssignOpen, onLongPress, deleteBg, assignBg }) {
@@ -1150,7 +1135,7 @@ function attachSwipeGestures(rowEl, { onDelete, onAssignOpen, onLongPress, delet
 // handle has touch-action:none and simply always drags.
 //
 // `wrapEl` is the outer <li> (todo-item-wrap or sub-item-wrap), which is
-// translated as a whole so any open edit panel / children section moves with
+// translated as a whole so any open assign panel / children section moves with
 // it. `getSiblingWraps()` is called at drag-start and must return the
 // current siblings (same list: all top-level <li>s, or one parent's sub
 // <li>s) in DOM order. `onDrop(fromIndex, toIndex)` fires once, on release,
@@ -1635,6 +1620,29 @@ async function deleteBoard(id) {
 // UI), and once later to a freshly-fetched remote copy at sync time (see
 // syncPending) — so relative changes like "toggle" re-flip rather than
 // storing an absolute target state.
+// The field-level half of the "edit"/"editSub" ops. Each field is touched
+// only when the patch carries its key, because the action menu changes one
+// thing at a time: a rename must not clear the deadline, and a deadline must
+// not rewrite the text. Ops queued by older builds always carried text and
+// (on tasks) due_date together, so they replay exactly as before.
+function applyPatch(t, patch) {
+  if ("text" in patch) t.text = patch.text;
+  if ("icon" in patch) { if (patch.icon) t.icon = patch.icon; else delete t.icon; }
+  if (patch.bold !== undefined) t.bold = patch.bold;
+  // Dropped rather than stored as false, so an item that was never
+  // marked urgent stays byte-identical to what older builds wrote.
+  if (patch.urgent !== undefined) { if (patch.urgent) t.urgent = true; else delete t.urgent; }
+  if ("due_date" in patch) {
+    if (patch.due_date) {
+      t.due_date = patch.due_date;
+      if (patch.due_time) t.due_time = patch.due_time; else delete t.due_time;
+    } else {
+      delete t.due_date;
+      delete t.due_time;
+    }
+  }
+}
+
 function applyOp(list, op) {
   switch (op.type) {
     case "add":
@@ -1683,19 +1691,7 @@ function applyOp(list, op) {
     case "edit": {
       const t = list.find((x) => x.id === op.id);
       if (!t) break;
-      t.text = op.patch.text;
-      if ("icon" in op.patch) { if (op.patch.icon) t.icon = op.patch.icon; else delete t.icon; }
-      if (op.patch.bold !== undefined) t.bold = op.patch.bold;
-      // Dropped rather than stored as false, so an item that was never
-      // marked urgent stays byte-identical to what older builds wrote.
-      if (op.patch.urgent !== undefined) { if (op.patch.urgent) t.urgent = true; else delete t.urgent; }
-      if (op.patch.due_date) {
-        t.due_date = op.patch.due_date;
-        if (op.patch.due_time) t.due_time = op.patch.due_time; else delete t.due_time;
-      } else {
-        delete t.due_date;
-        delete t.due_time;
-      }
+      applyPatch(t, op.patch);
       t.updated_at = op.now;
       break;
     }
@@ -1742,17 +1738,7 @@ function applyOp(list, op) {
       const parent = list.find((x) => x.id === op.parentId);
       const child = parent && parent.children && parent.children.find((c) => c.id === op.childId);
       if (!child) break;
-      child.text = op.patch.text;
-      if ("icon" in op.patch) { if (op.patch.icon) child.icon = op.patch.icon; else delete child.icon; }
-      if (op.patch.bold !== undefined) child.bold = op.patch.bold;
-      if (op.patch.urgent !== undefined) { if (op.patch.urgent) child.urgent = true; else delete child.urgent; }
-      if (op.patch.due_date) {
-        child.due_date = op.patch.due_date;
-        if (op.patch.due_time) child.due_time = op.patch.due_time; else delete child.due_time;
-      } else {
-        delete child.due_date;
-        delete child.due_time;
-      }
+      applyPatch(child, op.patch);
       child.updated_at = op.now;
       parent.updated_at = op.now;
       break;
@@ -1936,15 +1922,6 @@ function toggleTodo(id) {
   applyEdit({ type: "toggle", id, now: new Date().toISOString() });
 }
 
-// `userId` is a device id from `users`, or null to unassign.
-function assignTodo(id, userId) {
-  applyEdit({ type: "assign", id, userId, now: new Date().toISOString() });
-}
-
-function assignSubTodo(parentId, childId, userId) {
-  applyEdit({ type: "assignSub", parentId, childId, userId, now: new Date().toISOString() });
-}
-
 function deleteTodo(id) {
   applyEdit({ type: "delete", id });
 }
@@ -1964,6 +1941,7 @@ function addSubTodo(parentId, text) {
 // to that parent's sole child. Depth is capped at 2 (children never have
 // children of their own), so if the item being wrapped already has
 // sub-items, those get dropped — confirm with the user before doing that.
+// Reached from the action menu's "Wrap in new parent…".
 function promoteToSuper(id, text) {
   const { icon, text: trimmed } = splitLeadingIcon(text);
   if (!trimmed) return;
@@ -1975,15 +1953,30 @@ function promoteToSuper(id, text) {
     );
     if (!ok) return;
   }
+  // Snapshotted with its sub-items, so Undo gives back the ones the wrap
+  // dropped too — which is the part of this edit most worth undoing.
+  const index = todos.indexOf(todo);
+  const snapshot = JSON.parse(JSON.stringify(todo));
   const now = new Date().toISOString();
+  const newParentId = crypto.randomUUID();
   applyEdit({
     type: "wrapSuper",
     id,
     now,
     newParent: Object.assign(
-      { id: crypto.randomUUID(), text: trimmed, done: false, created_at: now, updated_at: now },
+      { id: newParentId, text: trimmed, done: false, created_at: now, updated_at: now },
       icon ? { icon } : null
     ),
+  });
+  // Undone as a delete of the new parent plus a restore of the original, the
+  // same pair a delete's Undo is built from, so no new op type is needed.
+  toast('Wrapped in "' + trimmed + '"', {
+    label: "Undo",
+    onClick: () => {
+      shownChildrenIds.delete(newParentId);
+      applyEdit({ type: "delete", id: newParentId });
+      applyEdit({ type: "restore", index, todo: snapshot });
+    },
   });
 }
 
@@ -2018,33 +2011,74 @@ function deleteSubTodo(parentId, childId) {
   applyEdit({ type: "deleteSub", parentId, childId, now: new Date().toISOString() });
 }
 
-// Combined rename + due-date/bold mutator for the inline edit form, used for
-// both checklist todos (renderEditForm's patch: {text, due_date, due_time})
-// and top-level notes (renderNoteEditForm's patch: {text, bold}) — each
-// passes only the fields its form has, and applyOp's "edit" case only
-// touches a field when the patch carries it.
-function editTodo(id, patch) {
-  const { icon, text: trimmed } = splitLeadingIcon(patch.text);
-  if (!trimmed) return;
+// An item is addressed as { id, parentId }, with parentId null for a
+// top-level one — the one shape the action menu can hold for either level.
+// Looked up afresh every time rather than kept, because a sync replaces
+// `todos` wholesale and a held object would be a detached copy.
+function findEntity(ref) {
+  if (!ref.parentId) return todos.find((t) => t.id === ref.id) || null;
+  const parent = todos.find((t) => t.id === ref.parentId);
+  return (parent && parent.children && parent.children.find((c) => c.id === ref.id)) || null;
+}
+
+function editOp(ref, patch) {
+  const now = new Date().toISOString();
+  return ref.parentId
+    ? { type: "editSub", parentId: ref.parentId, childId: ref.id, now, patch }
+    : { type: "edit", id: ref.id, now, patch };
+}
+
+// What an entity holds now for each field a patch would change — which is
+// exactly the patch that puts it back. `icon` travels with `text`, and
+// `due_time` with `due_date`, the same pairs applyPatch treats as one.
+function patchSnapshot(entity, patch) {
+  const back = {};
+  if ("text" in patch) { back.text = entity.text; back.icon = entity.icon || null; }
+  if ("bold" in patch) back.bold = !!entity.bold;
+  if ("urgent" in patch) back.urgent = !!entity.urgent;
+  if ("due_date" in patch) { back.due_date = entity.due_date || null; back.due_time = entity.due_time || null; }
+  return back;
+}
+
+// Every edit from the action menu lands immediately — there is no Save — so
+// each one offers the same Undo a delete does. The undo is a second, ordinary
+// edit op carrying the old values rather than a retraction of the first,
+// which is what keeps it correct after the edit has already synced.
+// `before` overrides the snapshot, for the deadline view, which applies
+// several changes but should undo back to where it was opened.
+function editWithUndo(ref, patch, message, before) {
+  const entity = findEntity(ref);
+  if (!entity) return;
+  const back = before || patchSnapshot(entity, patch);
+  applyEdit(editOp(ref, patch));
+  toast(message, { label: "Undo", onClick: () => applyEdit(editOp(ref, back)) });
+}
+
+function renameWithUndo(ref, raw) {
+  const { icon, text } = splitLeadingIcon(raw);
+  if (!text) return;
+  const entity = findEntity(ref);
+  // Re-typing the same text is not an edit, and must not offer to undo one.
+  if (!entity || (entity.text === text && (entity.icon ? entity.icon.value : null) === (icon ? icon.value : null))) return;
   // `icon` is always sent (null included) so deleting the emoji from the
-  // text field is what clears the icon — see applyOp's "edit" case.
-  const opPatch = { text: trimmed, icon };
-  if (patch.bold !== undefined) opPatch.bold = !!patch.bold;
-  if (patch.urgent !== undefined) opPatch.urgent = !!patch.urgent;
-  if ("due_date" in patch) { opPatch.due_date = patch.due_date; opPatch.due_time = patch.due_time; }
-  applyEdit({ type: "edit", id, now: new Date().toISOString(), patch: opPatch });
+  // text is what clears the icon — see applyPatch.
+  editWithUndo(ref, { text, icon }, "Renamed");
 }
 
-function editSubTodo(parentId, childId, patch) {
-  const { icon, text: trimmed } = splitLeadingIcon(patch.text);
-  if (!trimmed) return;
-  applyEdit({ type: "editSub", parentId, childId, now: new Date().toISOString(), patch: { text: trimmed, icon, due_date: patch.due_date, due_time: patch.due_time, urgent: !!patch.urgent } });
-}
-
-function editSubNote(parentId, childId, patch) {
-  const { icon, text: trimmed } = splitLeadingIcon(patch.text);
-  if (!trimmed) return;
-  applyEdit({ type: "editSub", parentId, childId, now: new Date().toISOString(), patch: { text: trimmed, icon, bold: !!patch.bold, urgent: !!patch.urgent } });
+// `userId` is a device id from `users`, or null to unassign.
+function assignWithUndo(ref, userId) {
+  const entity = findEntity(ref);
+  if (!entity || (entity.assigned_to || null) === userId) return;
+  const before = entity.assigned_to || null;
+  const op = (who) => ref.parentId
+    ? { type: "assignSub", parentId: ref.parentId, childId: ref.id, userId: who, now: new Date().toISOString() }
+    : { type: "assign", id: ref.id, userId: who, now: new Date().toISOString() };
+  applyEdit(op(userId));
+  const user = userId && findUser(userId);
+  toast(userId ? "Assigned to " + ((user && user.name) || "Unnamed") : "Unassigned", {
+    label: "Undo",
+    onClick: () => applyEdit(op(before)),
+  });
 }
 
 // Deletes immediately (swipe has no separate confirm step) but snapshots the
@@ -2057,9 +2091,8 @@ function deleteTodoWithUndo(id) {
   if (index === -1) return;
   const snapshot = JSON.parse(JSON.stringify(todos[index]));
   deleteTodo(id);
-  // Stale local-only UI state (open edit/assign panels, expanded children)
+  // Stale local-only UI state (open assign panel, expanded children)
   // would otherwise linger keyed to this id and reappear if it's undone.
-  editingIds.delete(id);
   assigningIds.delete(id);
   shownChildrenIds.delete(id);
   toast('Deleted "' + snapshot.text + '"', {
@@ -2074,7 +2107,6 @@ function deleteSubTodoWithUndo(parentId, childId) {
   if (index === -1) return;
   const snapshot = JSON.parse(JSON.stringify(parent.children[index]));
   deleteSubTodo(parentId, childId);
-  editingIds.delete(childId);
   assigningIds.delete(childId);
   toast('Deleted "' + snapshot.text + '"', {
     label: "Undo",
@@ -2226,6 +2258,16 @@ function wireEvents() {
   el("settingsPanel").onclick = (e) => {
     if (e.target === el("settingsPanel")) el("settingsPanel").classList.remove("open");
   };
+
+  // Tapping outside the action menu closes it, which is also how the deadline
+  // view is left: its changes have already landed, so there is nothing to
+  // confirm on the way out.
+  el("actionPanel").onclick = (e) => {
+    if (e.target === el("actionPanel")) closeActionMenu();
+  };
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && el("actionPanel").classList.contains("open")) closeActionMenu();
+  });
 
   el("boardPageBackBtn").onclick = () => closeBoardPage();
   el("boardPageDoneBtn").onclick = () => {

@@ -178,14 +178,14 @@
     border: 1px solid var(--border); cursor: pointer;
     touch-action: pan-y; will-change: transform;
     transition: transform 0.2s ease-out;
-    /* Long press opens the edit panel (see attachSwipeGestures), so the
+    /* Long press opens the action menu (see attachSwipeGestures), so the
        platform's own long-press UI has to stay out of the way: without these
        iOS Safari raises the selection loupe and the Copy/Look Up callout over
        the row text. Preventing `contextmenu` in JS is not enough on iOS —
        these two (still prefixed for WebKit) are what actually suppress it. */
     -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;
   }
-  /* Flagged urgent from the edit panel. A parent row wears it too when any
+  /* Flagged urgent from the action menu. A parent row wears it too when any
      of its open sub-items is urgent (see renderRow), so a collapsed row
      still shows it. Declared before .pressing so the press cue wins while
      the finger is down. */
@@ -254,32 +254,6 @@
     background: var(--card); border: 1px solid var(--border); border-top: none;
     border-radius: 0 0 12px 12px; padding: 10px 14px; margin-top: -8px;
   }
-  .edit-form { display: flex; flex-direction: column; gap: 8px; padding: 6px 0; }
-  .edit-date-row, .edit-btn-row { display: flex; gap: 8px; }
-  /* Five buttons now (Bold / Save / Copy / Export / !) — wrap rather than
-     squeeze them off the edge of a narrow phone. */
-  .edit-btn-row { flex-wrap: wrap; }
-  .edit-form input[type=text] { width: 100%; padding: 8px 10px; font-size: 0.85rem; border-radius: 8px; }
-  .edit-date-row input[type=date],
-  .edit-date-row input[type=time] { flex: 1; min-width: 0; padding: 8px 10px; font-size: 0.85rem; border-radius: 8px; }
-  .edit-form button[type=submit] {
-    background: var(--accent); color: white; border: none; border-radius: 8px;
-    padding: 8px 14px; font-size: 0.85rem; cursor: pointer;
-  }
-  .edit-form .copy-btn {
-    background: none; border: 1px solid var(--border); border-radius: 8px;
-    padding: 8px 14px; font-size: 0.85rem; cursor: pointer; color: var(--muted);
-  }
-  .bold-toggle-btn {
-    background: none; border: 1px solid var(--border); border-radius: 8px;
-    padding: 8px 14px; font-size: 0.85rem; font-weight: 700; cursor: pointer; color: var(--muted);
-  }
-  .bold-toggle-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
-  .urgent-toggle-btn {
-    background: none; border: 1px solid var(--border); border-radius: 8px;
-    padding: 8px 14px; font-size: 0.85rem; font-weight: 700; cursor: pointer; color: var(--muted);
-  }
-  .urgent-toggle-btn.active { background: var(--danger); border-color: var(--danger); color: white; }
   .children-section { margin-top: 4px; }
   .sub-list {
     list-style: none; margin: 4px 0 0 30px; padding: 2px 0 2px 12px;
@@ -299,9 +273,6 @@
     min-width: 34px; font-size: 0.85rem; font-weight: 700; cursor: pointer; color: var(--muted);
   }
   .note-mode-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
-  .parent-section { margin-bottom: 4px; }
-  .super-add-row { padding: 6px 0; display: flex; gap: 6px; }
-  .super-add-row input { flex: 1; padding: 8px 10px; font-size: 0.85rem; border-radius: 8px; }
   .empty-state { color: var(--muted); text-align: center; padding: 40px 16px; font-size: 0.95rem; }
 
   .add-bar {
@@ -326,16 +297,41 @@
     color: white; border-radius: 12px; padding: 4px 10px; font-size: 0.8rem; cursor: pointer;
   }
 
-  .settings-panel {
+  .settings-panel, .action-panel {
     position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: none;
     align-items: flex-end; justify-content: center; z-index: 100;
   }
-  .settings-panel.open { display: flex; }
-  .settings-sheet {
+  .settings-panel.open, .action-panel.open { display: flex; }
+  .settings-sheet, .action-sheet {
     background: var(--card); width: 100%; max-width: 560px; border-radius: 16px 16px 0 0;
     padding: 20px; padding-bottom: calc(20px + env(safe-area-inset-bottom));
   }
   .settings-sheet h2 { margin: 0 0 12px; font-size: 1.05rem; }
+  /* The action menu: the item's own text as the title, then one full-width
+     row per option, in the same idiom as the Lists rows in Settings. */
+  .action-sheet h2 { margin: 0 0 6px; font-size: 1rem; word-break: break-word; }
+  .action-list { display: flex; flex-direction: column; }
+  .action-item {
+    background: none; border: none; border-bottom: 1px solid var(--border);
+    padding: 13px 4px; color: var(--text); font-size: 0.95rem; text-align: left; cursor: pointer;
+  }
+  .action-item:last-child { border-bottom: none; }
+  .action-item:active { background: var(--bg); }
+  .action-item.danger { color: var(--danger); }
+  .action-form { display: flex; flex-direction: column; gap: 10px; padding: 6px 0; }
+  .action-form input[type=text] { width: 100%; padding: 10px; font-size: 1rem; border-radius: 8px; }
+  .action-date-row { display: flex; gap: 8px; }
+  .action-date-row input {
+    flex: 1; min-width: 0; padding: 10px; font-size: 1rem; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--card); color: var(--text);
+  }
+  .action-date-row input:disabled { opacity: 0.5; }
+  .action-btn-row { display: flex; gap: 8px; justify-content: flex-end; }
+  .action-btn {
+    background: none; border: 1px solid var(--border); border-radius: 8px;
+    padding: 9px 16px; font-size: 0.9rem; cursor: pointer; color: var(--text);
+  }
+  .action-btn.accent { background: var(--accent); border-color: var(--accent); color: white; }
   .settings-sheet .row {
     display: flex; justify-content: space-between; align-items: center;
     padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 0.9rem;
@@ -455,6 +451,12 @@
   </div>
 
   <div class="toast" id="toast"></div>
+
+  <!-- The long-press action menu. Filled by openActionMenu() in app.js, and
+       kept out of #todoList so a sync's re-render never rebuilds it. -->
+  <div class="action-panel" id="actionPanel">
+    <div class="action-sheet" id="actionSheet"></div>
+  </div>
 
   <div class="settings-panel" id="settingsPanel">
     <div class="settings-sheet">
