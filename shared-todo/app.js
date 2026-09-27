@@ -729,6 +729,7 @@ function openActionMenu(ref) {
   }
   actions.push(
     [entity.urgent ? "Not urgent" : "Mark urgent", now(() => editWithUndo(ref, { urgent: !entity.urgent }, entity.urgent ? "No longer urgent" : "Marked urgent"))],
+    ["Duplicate", now(() => duplicateWithUndo(ref))],
     ["Copy text", now(() => copyEntityText(entity))],
     ["Export as Markdown", now(() => exportEntityMarkdown(entity))],
   );
@@ -2106,6 +2107,49 @@ function assignWithUndo(ref, userId) {
     label: "Undo",
     onClick: () => applyEdit(op(before)),
   });
+}
+
+// Puts a copy of an item — sub-items included — right below it, as a quick
+// way to start a new list from an old one. Every copy gets fresh ids: ops
+// address items by id alone (sub-items by parent + child id), so a copy
+// sharing one would have every later edit land on whichever came first.
+// The copy starts un-done, and its sub-items with it, because a list being
+// reused is a list being started again; everything else is carried over.
+// It rides the existing "restore"/"restoreSub" ops, which insert at an
+// index, and is undone by an ordinary delete of the copy.
+function duplicateWithUndo(ref) {
+  const entity = findEntity(ref);
+  if (!entity) return;
+  const now = new Date().toISOString();
+  const fresh = (item) => {
+    const copy = JSON.parse(JSON.stringify(item));
+    copy.id = crypto.randomUUID();
+    copy.created_at = now;
+    copy.updated_at = now;
+    if (copy.type !== "note") copy.done = false;
+    delete copy.done_at;
+    if (copy.children) copy.children = copy.children.map(fresh);
+    return copy;
+  };
+  const copy = fresh(entity);
+  if (ref.parentId) {
+    const parent = todos.find((t) => t.id === ref.parentId);
+    const index = parent.children.indexOf(entity) + 1;
+    applyEdit({ type: "restoreSub", parentId: ref.parentId, index, now, todo: copy });
+    toast('Duplicated "' + entity.text + '"', {
+      label: "Undo",
+      onClick: () => applyEdit({ type: "deleteSub", parentId: ref.parentId, childId: copy.id, now: new Date().toISOString() }),
+    });
+  } else {
+    applyEdit({ type: "restore", index: todos.indexOf(entity) + 1, todo: copy });
+    toast('Duplicated "' + entity.text + '"', {
+      label: "Undo",
+      onClick: () => {
+        shownChildrenIds.delete(copy.id);
+        applyEdit({ type: "delete", id: copy.id });
+      },
+    });
+  }
 }
 
 // Deletes immediately (swipe has no separate confirm step) but snapshots the
