@@ -13,7 +13,7 @@
   {% if page.image and page.image != "" %}<meta property="og:image" content="{{ page.image | escape }}">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:image" content="{{ page.image | escape }}">{% endif %}
-  <link rel="alternate" type="application/rss+xml" title="Notes · Ramón Astudillo" href="{{ '/notes/ramon_astudillo_ai_notes.xml' | relative_url }}">
+  <link rel="alternate" type="application/rss+xml" title="Notes · Ramón Astudillo" href="{{ '/notes/ai_notes.xml' | relative_url }}">
   <link rel="icon" type="image/png" href="{{ '/menger.png' | relative_url }}">
   <style>
     :root { --bg: #ffffff; --text: #1b1f24; --muted: #5d6673; --line: #d8dde3; --accent: #1f6feb; }
@@ -40,7 +40,7 @@
     {% if page.image and page.image != "" %}<img src="{{ page.image | escape }}" alt="">{% endif %}
     <div><div class="site">{{ page.site_name }}</div><div class="url">{{ page.link | escape }}</div></div>
   </a>
-  <footer>{{ page.date | date: "%-d %b %Y" }} · <a href="{{ '/notes/ramon_astudillo_ai_notes.xml' | relative_url }}">RSS</a> · <a href="{{ '/' | relative_url }}">Ramón Astudillo</a></footer>
+  <footer>{{ page.date | date: "%-d %b %Y" }} · <a href="{{ '/notes/ai_notes.xml' | relative_url }}">RSS</a> · <a href="{{ '/' | relative_url }}">Ramón Astudillo</a></footer>
 </main>
 </body>
 </html>
