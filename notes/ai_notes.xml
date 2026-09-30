@@ -15,7 +15,7 @@ layout: null
       <link>{{ note.url | absolute_url }}</link>
       <guid isPermaLink="true">{{ note.url | absolute_url }}</guid>
       <pubDate>{{ note.date | date_to_rfc822 }}</pubDate>
-      <description><![CDATA[{% if note.comment != "" %}<p>{{ note.comment | escape | newline_to_br }}</p>{% endif %}<p><a href="{{ note.link | escape }}">{{ note.link | escape }}</a></p>{% if note.image != "" %}<p><img src="{{ note.image | escape }}" alt=""></p>{% endif %}]]></description>
+      <description><![CDATA[{% if note.comment != "" %}<p>{{ note.comment | escape | newline_to_br }}</p>{% endif %}]]></description>
       {% if note.image != "" %}<media:content url="{{ note.image | xml_escape }}" medium="image"/>{% endif %}
     </item>
     {% endfor %}
