@@ -479,7 +479,9 @@
   <div class="tab-bar" id="tabBar" hidden></div>
 
   <main id="main">
-    <div class="center-screen" id="screen-connect">
+    <!-- Loading is what shows until main() picks a screen; Connect used to,
+         and flashed on every open of an already-connected app. -->
+    <div class="center-screen" id="screen-connect" hidden>
       <p>This list is stored encrypted in your Dropbox. Connect your Dropbox account to get started.</p>
       <button class="primary" id="connectBtn">Connect Dropbox</button>
     </div>

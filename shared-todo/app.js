@@ -1698,7 +1698,9 @@ function renderTabs() {
 // stray write land against the wrong board's file.
 async function switchBoard(id) {
   if (currentBoard && id === currentBoard.id) return;
-  await syncChain;
+  // Only a sync has to finish first; a background refresh still out for the
+  // old board sees the switch and drops its answer (see refreshOpenBoard).
+  if (pendingOps.length > 0) await syncChain;
   currentBoard = boards.find((b) => b.id === id);
   localStorage.setItem(LS_ACTIVE_BOARD, currentBoard.id);
   // Each list keeps its own search, so switching back finds it as it was left.
@@ -1706,7 +1708,9 @@ async function switchBoard(id) {
   el("searchClearBtn").hidden = !searchQuery();
   el("headerTitle").textContent = currentBoard.label;
   renderTabs();
-  await loadAndRender(true);
+  // A list seen before on this device shows at once, then catches up.
+  if (showCachedBoard()) syncChain = syncChain.then(refreshOpenBoard);
+  else await loadAndRender(true);
 }
 
 function colorPickerHtml(selected) {
@@ -2222,12 +2226,65 @@ async function loadAndRender(allowOfflineFallback) {
 // Applies one local edit op optimistically (instant render, no network
 // wait), persists the queue so it survives a killed process, then syncs it
 // to Dropbox in the background.
+//
+// The op is applied as a copy, here and in syncPending, so the item an "add"
+// carries never becomes the very object in the list: later edits to the
+// item would otherwise rewrite the queued op too, and a replay of it would
+// then land the item already edited, for the later op to edit again.
 function applyEdit(op) {
-  applyOp(todos, op);
+  applyOp(todos, structuredClone(op));
   render();
   pendingOps.push(op);
   persistQueue();
   syncChain = syncChain.then(syncPending);
+}
+
+// Draws the open board from the copy kept on this device (see persistQueue),
+// so a list the device has seen before is on screen at once instead of after
+// a Dropbox round trip. Returns false when there is no such copy.
+function showCachedBoard() {
+  const cached = loadPersistedQueue(currentBoard.id);
+  if (!cached) return false;
+  todos = cached.todos;
+  loadedUpdatedAt = cached.loadedUpdatedAt;
+  pendingOps = cached.pendingOps;
+  render();
+  showScreen("list");
+  setSyncState("syncing");
+  return true;
+}
+
+// Brings the open board up to date with Dropbox behind whatever is already
+// on screen. Always run on syncChain, never alongside a sync: a download
+// answered after a sync had uploaded would draw the older list over it.
+// Unsynced edits hand over to syncPending, which downloads and draws anyway;
+// so does an edit made while this download was out, whose sync is queued
+// right behind it. A board switched away from meanwhile is left alone.
+async function refreshOpenBoard() {
+  if (pendingOps.length > 0) return syncPending();
+  const boardId = currentBoard.id;
+  setSyncState("syncing");
+  try {
+    const doc = await fetchRemoteDoc();
+    if (currentBoard.id !== boardId || pendingOps.length > 0) return;
+    todos = doc.todos;
+    loadedUpdatedAt = doc.updated_at;
+    persistQueue();
+    render();
+    setSyncState("synced");
+  } catch (err) {
+    console.error(err);
+    if (err.isKeyError) lockWithWrongKey();
+    else setSyncState("error");
+  }
+}
+
+// The remembered key no longer opens the data (the passphrase was changed
+// on another device): forget it and ask for the passphrase.
+function lockWithWrongKey() {
+  localStorage.removeItem(LS_KEY_CACHE);
+  cryptoKey = null;
+  showScreen("passphrase");
 }
 
 // Flushes pendingOps using read-check-write (spec section 6, step 2).
@@ -2248,18 +2305,28 @@ async function syncPending() {
     // as it would have on ours. This used to discard the queue on any such
     // change ("please redo your edit"), which a counter can't afford — two
     // people pressing the same counter is exactly when it happens.
-    for (const op of pendingOps) applyOp(remoteDoc.todos, op);
+    //
+    // Only the ops queued by now go up in this upload. Edits made while it is
+    // in flight stay queued — their own syncPending runs next on syncChain —
+    // and are applied again on top of what was uploaded before it is drawn.
+    // Clearing the whole queue here, as this once did, silently dropped every
+    // edit made during the round trip: a quick run of swipes kept only the
+    // first.
+    const batch = pendingOps.length;
+    for (const op of pendingOps.slice(0, batch)) applyOp(remoteDoc.todos, structuredClone(op));
     remoteDoc.updated_at = new Date().toISOString();
 
     const text = await encryptPayload(cryptoKey, remoteDoc);
     await DropboxFile.upload(currentBoard.file, text);
 
-    todos = remoteDoc.todos;
+    pendingOps = pendingOps.slice(batch);
+    const shown = structuredClone(remoteDoc.todos);
+    for (const op of pendingOps) applyOp(shown, structuredClone(op));
+    todos = shown;
     loadedUpdatedAt = remoteDoc.updated_at;
-    pendingOps = [];
-    persistQueue(); // keep the last-known-good cache, just with an empty queue now
+    persistQueue();
     render();
-    setSyncState("synced");
+    setSyncState(pendingOps.length > 0 ? "syncing" : "synced");
   } catch (err) {
     console.error(err);
     setSyncState("error");
@@ -2564,6 +2631,7 @@ async function tryStoredKey() {
   if (!cached) return false;
   try {
     cryptoKey = await importKeyFromBase64(cached);
+    if (showCachedStart()) return true;
     // allowOfflineFallback=true: this key was only ever cached after a prior
     // successful online unlock, so it's safe to trust offline.
     await bootstrapBoards(true);
@@ -2586,6 +2654,52 @@ async function tryStoredKey() {
     el("loadingRetryBtn").hidden = false;
     return true;
   }
+}
+
+// The fast open: with a remembered key and this device's copies of the list
+// of lists and of the last open board, draw from those straight away and
+// fetch both from Dropbox behind them. Only reached with a key that was
+// cached after a successful online unlock, so trusting local copies
+// decrypted under it is the same call loadAndRender's offline fallback
+// makes. Returns false when a copy is missing, for the ordinary load.
+function showCachedStart() {
+  const manifest = loadManifestCache();
+  if (!manifest || !manifest.boards || manifest.boards.length === 0) return false;
+  boards = manifest.boards;
+  users = manifest.users || [];
+  manifestUpdatedAt = manifest.updated_at;
+  currentBoard = pickInitialBoard();
+  el("headerTitle").textContent = currentBoard.label;
+  renderTabs();
+  if (!showCachedBoard()) return false;
+  refreshAfterCachedStart();
+  return true;
+}
+
+async function refreshAfterCachedStart() {
+  try {
+    await ensureManifest(true);
+  } catch (err) {
+    console.error(err);
+    if (err.isKeyError) lockWithWrongKey();
+    else setSyncState("error");
+    return;
+  }
+  // The list of lists may have changed elsewhere: renamed, re-iconed,
+  // re-sorted, or the open board deleted.
+  const board = boards.find((b) => b.id === currentBoard.id);
+  if (!board) {
+    currentBoard = pickInitialBoard();
+    localStorage.setItem(LS_ACTIVE_BOARD, currentBoard.id);
+    el("headerTitle").textContent = currentBoard.label;
+    renderTabs();
+    if (!showCachedBoard()) await loadAndRender(true);
+    return;
+  }
+  currentBoard = board;
+  el("headerTitle").textContent = currentBoard.label;
+  renderTabs();
+  syncChain = syncChain.then(refreshOpenBoard);
 }
 
 function wireEvents() {
@@ -2663,12 +2777,9 @@ function wireEvents() {
   el("searchClearBtn").onclick = () => { setSearch(""); searchInput.focus(); };
 
   el("refreshBtn").onclick = () => {
-    // Retry rather than reload if there's an unsynced edit — a full reload
-    // would fetch the remote copy and discard what's only shown locally.
-    // allowOfflineFallback=true: reaching this button means the user is
-    // already past a validated unlock this session.
-    if (pendingOps.length > 0) syncChain = syncChain.then(syncPending);
-    else loadAndRender(true);
+    // Retries the sync if there's an unsynced edit, and otherwise catches the
+    // list up in the background, without a loading screen over it.
+    syncChain = syncChain.then(refreshOpenBoard);
   };
 
   let getUserColor = () => CONFIG.USER_COLORS[0];
