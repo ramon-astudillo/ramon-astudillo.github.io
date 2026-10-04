@@ -67,6 +67,7 @@ function clearPersistedQueue(boardId) {
 }
 const assigningIds = new Set(); // todo/sub-todo IDs whose assignee-picker panel is open (local UI state, not synced; opened by swipe-right; ids are UUIDs so one Set covers both levels)
 const shownChildrenIds = new Set(); // top-level todo IDs whose sub-todo list + add-sub-todo form is shown (local UI state, not synced)
+const searchQueries = new Map(); // board id -> what is typed in the search bar for it (local UI state, not synced or persisted)
 const subAddMode = new Map(); // top-level todo ID -> what its add-sub-item form adds, "note" or "counter"; absent means "todo" (local UI state, not synced)
 
 const el = (id) => document.getElementById(id);
@@ -82,7 +83,8 @@ function showScreen(name) {
   const isList = name === "list";
   el("todoList").hidden = !isList;
   el("emptyState").hidden = true; // render() decides whether to show this
-  el("addBar").hidden = !isList;
+  el("addForm").hidden = !isList || searchTerms().length > 0;
+  el("searchBar").hidden = !isList;
   el("syncStatus").hidden = !isList;
   el("refreshBtn").hidden = !isList;
   el("settingsBtn").hidden = !isList;
@@ -252,12 +254,17 @@ function compareForDisplay(a, b, f, isSub) {
 // A drop where neither neighbour ties is a move between blocks: the rank
 // still changes, but the sort outranks it on the next render, so the row
 // springs back — unavoidable while the sort is the outer criterion.
-function storedDropIndex(entities, id, displayToIndex, isSub) {
-  if (!sortActive()) return displayToIndex;
+//
+// A search hides items as well, so `displayed` is the siblings as actually
+// drawn, sorted and filtered. With a search and no sort every item ties, so
+// the drop lands right after the row it was dropped below (or before the
+// one it was dropped above), and the hidden items keep their places.
+function storedDropIndex(entities, displayed, id, displayToIndex, isSub) {
+  if (!sortActive() && searchTerms().length === 0) return displayToIndex;
   const f = boardSortFlags();
   const dragged = entities.find((e) => e.id === id);
   const stored = entities.filter((e) => e.id !== id);
-  const display = sortedForDisplay(entities, isSub).filter((e) => e.id !== id);
+  const display = displayed.filter((e) => e.id !== id);
   if (!dragged || display.length === 0) return 0;
   const clamped = Math.max(0, Math.min(displayToIndex, display.length));
   const above = clamped > 0 ? display[clamped - 1] : null;
@@ -273,12 +280,75 @@ function storedDropIndex(entities, id, displayToIndex, isSub) {
   return indexOf(below);
 }
 
+// --- Search ----------------------------------------------------------
+//
+// Per board, in memory only: the bottom bar filters the open list to the
+// items whose text (icon included) holds every typed word, ignoring case
+// and accents. A parent is kept when it or any of its sub-items matches;
+// when sub-items match, it is drawn open with only those. The add rows are
+// hidden while a search is on, since an item added there that didn't match
+// would vanish the moment it was added.
+function searchQuery() {
+  return (currentBoard && searchQueries.get(currentBoard.id)) || "";
+}
+
+function normalizeForSearch(text) {
+  return text.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+}
+
+function searchTerms() {
+  return normalizeForSearch(searchQuery()).split(/\s+/).filter(Boolean);
+}
+
+function entityMatches(entity, terms) {
+  const hay = normalizeForSearch(textWithIcon(entity));
+  return terms.every((t) => hay.includes(t));
+}
+
+// The sub-items a search leaves on show under `todo`, or null when the
+// search doesn't reach into them (no search, or no sub-item matches).
+function matchingChildren(todo, terms) {
+  if (terms.length === 0) return null;
+  const hits = (todo.children || []).filter((c) => entityMatches(c, terms));
+  return hits.length > 0 ? hits : null;
+}
+
+// The top-level items as drawn: sorted, then filtered by the search.
+function displayedTodos() {
+  const terms = searchTerms();
+  const shown = sortedForDisplay(todos, false);
+  if (terms.length === 0) return shown;
+  return shown.filter((t) => entityMatches(t, terms) || matchingChildren(t, terms));
+}
+
+// The sub-items of `todo` as drawn: sorted, then cut to the matches when
+// the search reaches into them.
+function displayedChildren(todo) {
+  const shown = sortedForDisplay(todo.children || [], true);
+  const hits = matchingChildren(todo, searchTerms());
+  return hits ? shown.filter((c) => hits.includes(c)) : shown;
+}
+
+function setSearch(value) {
+  if (!currentBoard) return;
+  if (value) searchQueries.set(currentBoard.id, value); else searchQueries.delete(currentBoard.id);
+  el("searchInput").value = value;
+  el("searchClearBtn").hidden = !value;
+  render();
+}
+
 function render() {
   const list = el("todoList");
   list.innerHTML = "";
-  for (const todo of sortedForDisplay(todos, false)) list.appendChild(renderTodoItem(todo));
+  const shown = displayedTodos();
+  for (const todo of shown) list.appendChild(renderTodoItem(todo));
   el("todoList").hidden = false;
-  el("emptyState").hidden = todos.length !== 0;
+  const searching = searchTerms().length > 0;
+  el("addForm").hidden = searching;
+  el("emptyState").textContent = todos.length === 0
+    ? "Nothing here yet. Add one below."
+    : "No matches for “" + searchQuery().trim() + "”.";
+  el("emptyState").hidden = shown.length !== 0;
 }
 
 function formatDuration(mins) {
@@ -1125,7 +1195,7 @@ function renderTodoItem(todo) {
   // stored order while a sort is on — storedDropIndex translates it, so the
   // handle stays usable under a sort instead of disappearing.
   attachDragReorder(handle, wrap, () => Array.from(el("todoList").children), (fromIndex, toIndex) =>
-    reorderTodo(todo.id, storedDropIndex(todos, todo.id, toIndex, false))
+    reorderTodo(todo.id, storedDropIndex(todos, displayedTodos(), todo.id, toIndex, false))
   );
 
   if (assigningIds.has(todo.id)) {
@@ -1135,7 +1205,8 @@ function renderTodoItem(todo) {
     wrap.appendChild(panel);
   }
 
-  if (shownChildrenIds.has(todo.id) && !isCounter(todo)) wrap.appendChild(renderChildrenSection(todo));
+  const open = shownChildrenIds.has(todo.id) || matchingChildren(todo, searchTerms());
+  if (open && !isCounter(todo)) wrap.appendChild(renderChildrenSection(todo));
 
   return wrap;
 }
@@ -1152,7 +1223,7 @@ function renderChildrenSection(todo) {
     const ul = document.createElement("ul");
     ul.className = "sub-list";
 
-    for (const child of sortedForDisplay(children, true)) {
+    for (const child of displayedChildren(todo)) {
       const li = document.createElement("li");
       li.className = "sub-item-wrap" + (child.type === "note" ? " note-item-wrap" : "");
 
@@ -1171,7 +1242,7 @@ function renderChildrenSection(todo) {
       attachDragReorder(childHandle, li, () => Array.from(ul.children), (fromIndex, toIndex) => {
         const parent = todos.find((t) => t.id === todo.id);
         if (!parent) return;
-        reorderSubTodo(todo.id, child.id, storedDropIndex(parent.children || [], child.id, toIndex, true));
+        reorderSubTodo(todo.id, child.id, storedDropIndex(parent.children || [], displayedChildren(parent), child.id, toIndex, true));
       });
 
       if (assigningIds.has(child.id)) {
@@ -1220,7 +1291,7 @@ function renderChildrenSection(todo) {
     addInput.value = "";
   };
   addForm.append(noteModeBtn, addInput);
-  section.appendChild(addForm);
+  if (searchTerms().length === 0) section.appendChild(addForm);
 
   return section;
 }
@@ -1630,6 +1701,9 @@ async function switchBoard(id) {
   await syncChain;
   currentBoard = boards.find((b) => b.id === id);
   localStorage.setItem(LS_ACTIVE_BOARD, currentBoard.id);
+  // Each list keeps its own search, so switching back finds it as it was left.
+  el("searchInput").value = searchQuery();
+  el("searchClearBtn").hidden = !searchQuery();
   el("headerTitle").textContent = currentBoard.label;
   renderTabs();
   await loadAndRender(true);
@@ -2542,9 +2616,12 @@ function wireEvents() {
     addInput.placeholder = addModePlaceholder(addMode, false);
   };
 
+  // The new item lands right above the add row, which keeps focus for the
+  // next one; scrolling keeps the row in view as the list grows under it.
   const submitAdd = () => {
     addTodo(addInput.value, addMode);
     addInput.value = "";
+    el("addForm").scrollIntoView({ block: "nearest" });
   };
   // Enter used to implicitly submit this form back when it held a single
   // text field and a type="submit" button. Now that the "N" toggle button
@@ -2574,6 +2651,16 @@ function wireEvents() {
     e.preventDefault();
     submitAdd();
   };
+
+  const searchInput = el("searchInput");
+  searchInput.addEventListener("input", () => setSearch(searchInput.value));
+  // Enter (the keyboard's search key) only puts the keyboard away: the list
+  // already filters as you type. Escape clears.
+  searchInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); searchInput.blur(); }
+    if (e.key === "Escape") setSearch("");
+  });
+  el("searchClearBtn").onclick = () => { setSearch(""); searchInput.focus(); };
 
   el("refreshBtn").onclick = () => {
     // Retry rather than reload if there's an unsynced edit — a full reload
