@@ -143,7 +143,34 @@ const DropboxFile = (() => {
     return resp.text();
   }
 
-  // Overwrites `path` with `text`.
+  // As download, but the raw bytes, for binary files.
+  async function downloadBytes(path) {
+    const token = await DropboxAuth.getAccessToken();
+    const resp = await fetch("https://content.dropboxapi.com/2/files/download", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer " + token,
+        "Dropbox-API-Arg": JSON.stringify({ path }),
+      },
+    });
+    if (resp.status === 409) return null; // path/not_found
+    if (!resp.ok) throw new Error("Dropbox download failed: " + (await resp.text()));
+    return resp.arrayBuffer();
+  }
+
+  // Deletes `path`. Already gone is not an error.
+  async function remove(path) {
+    const token = await DropboxAuth.getAccessToken();
+    const resp = await fetch("https://api.dropboxapi.com/2/files/delete_v2", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
+      body: JSON.stringify({ path }),
+    });
+    if (resp.status === 409) return;
+    if (!resp.ok) throw new Error("Dropbox delete failed: " + (await resp.text()));
+  }
+
+  // Overwrites `path` with `text` (or bytes).
   async function upload(path, text) {
     const token = await DropboxAuth.getAccessToken();
     const resp = await fetch("https://content.dropboxapi.com/2/files/upload", {
@@ -163,5 +190,5 @@ const DropboxFile = (() => {
     return resp.json();
   }
 
-  return { download, upload };
+  return { download, downloadBytes, upload, remove };
 })();

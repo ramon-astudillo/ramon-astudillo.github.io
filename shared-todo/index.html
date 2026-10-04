@@ -328,7 +328,28 @@
   .settings-sheet {
     background: var(--card); width: 100%; max-width: 560px; border-radius: 16px 16px 0 0;
     padding: 20px; padding-bottom: calc(20px + env(safe-area-inset-bottom));
+    max-height: 92vh; overflow-y: auto; overscroll-behavior: contain;
   }
+  .splash-help { color: var(--muted); font-size: 0.8rem; margin: 0 0 10px; }
+  .splash-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 10px; }
+  .splash-grid:empty { display: none; }
+  .splash-thumb {
+    position: relative; aspect-ratio: 1; border-radius: 8px; overflow: hidden;
+    background: var(--bg); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center; color: var(--muted);
+  }
+  .splash-thumb img, .splash-thumb video { width: 100%; height: 100%; object-fit: cover; }
+  .splash-thumb button {
+    position: absolute; top: 3px; right: 3px; width: 24px; height: 24px; border-radius: 50%;
+    border: none; background: rgba(0,0,0,0.55); color: white; font-size: 0.75rem; cursor: pointer; padding: 0;
+  }
+  /* Above everything, the edit page included. */
+  .splash {
+    position: fixed; inset: 0; z-index: 300; background: #000; display: none;
+    align-items: center; justify-content: center; cursor: pointer;
+  }
+  .splash.open { display: flex; }
+  .splash img, .splash video { max-width: 100%; max-height: 100%; object-fit: contain; }
   .settings-sheet h2 { margin: 0 0 12px; font-size: 1.05rem; }
   /* The long-press edit page: full screen over the list, a sticky header
      with back and Save, then the fields and actions as cards. */
@@ -529,6 +550,10 @@
        kept out of #todoList so a sync's re-render never rebuilds it. -->
   <div class="edit-page" id="editPage"></div>
 
+  <!-- The splash shown on open, filled by showSplash() in app.js from this
+       device's copies of the images (never from the public app shell). -->
+  <div class="splash" id="splash"></div>
+
   <div class="settings-panel" id="settingsPanel">
     <div class="settings-sheet">
       <!-- Two views inside the one sheet: the general settings (below) and a
@@ -562,6 +587,12 @@
           <div class="row"><span>Dropbox account</span><button class="secondary danger" id="disconnectBtn">Disconnect</button></div>
           <div class="row"><span>Remembered passphrase</span><button class="secondary" id="forgetKeyBtn">Forget on this device</button></div>
         </details>
+        <h2 style="margin-top:16px;">Splash screen</h2>
+        <p class="splash-help">One is shown at random when the app opens, for a few seconds or until tapped. Stored encrypted in Dropbox and shared by every device on this passphrase.</p>
+        <div class="splash-grid" id="splashGrid"></div>
+        <p class="splash-help" id="splashEmpty">No images yet — the app opens straight to the list.</p>
+        <button class="secondary" type="button" id="splashAddBtn">Add images or GIFs…</button>
+        <input type="file" id="splashFileInput" accept="image/*,video/*" multiple hidden>
         <h2 style="margin-top:16px;">Lists</h2>
         <div class="manage-boards-list" id="manageBoardsList"></div>
 

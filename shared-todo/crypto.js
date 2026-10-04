@@ -66,3 +66,21 @@ async function decryptPayload(key, fileText) {
   );
   return JSON.parse(new TextDecoder().decode(plaintext));
 }
+
+// Binary counterparts of the two above, for files that aren't JSON (splash
+// images): the 12-byte IV followed by the ciphertext, raw rather than
+// base64, so an encrypted file is only 28 bytes (IV + GCM tag) larger than
+// the original.
+async function encryptBytes(key, bytes) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ciphertext = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, bytes));
+  const out = new Uint8Array(iv.length + ciphertext.length);
+  out.set(iv);
+  out.set(ciphertext, iv.length);
+  return out;
+}
+
+async function decryptBytes(key, buffer) {
+  const bytes = new Uint8Array(buffer);
+  return crypto.subtle.decrypt({ name: "AES-GCM", iv: bytes.slice(0, 12) }, key, bytes.slice(12));
+}

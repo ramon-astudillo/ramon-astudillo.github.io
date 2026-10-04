@@ -2618,6 +2618,7 @@ async function unlockWithPassphrase(passphrase, remember) {
     } else {
       localStorage.removeItem(LS_KEY_CACHE);
     }
+    syncSplash();
   } catch (err) {
     console.error(err);
     cryptoKey = null;
@@ -2790,6 +2791,7 @@ function wireEvents() {
     getUserColor = wireColorPicker(el("userColorPicker"), (me && me.color) || CONFIG.USER_COLORS[0]);
     el("settingsPanel").classList.add("open");
     refreshUpdateButtonLabel();
+    renderSplashSettings();
   };
 
   el("userNameForm").onsubmit = (e) => {
@@ -2866,6 +2868,8 @@ function wireEvents() {
     localStorage.removeItem(LS_KEY_CACHE);
     localStorage.removeItem(LS_ACTIVE_BOARD);
     for (const b of boards) clearPersistedQueue(b.id);
+    localStorage.removeItem(LS_SPLASH_INDEX);
+    SplashStore.clear();
     cryptoKey = null;
     boards = [];
     currentBoard = null;
@@ -2881,6 +2885,12 @@ function wireEvents() {
   };
 
   el("forceUpdateBtn").onclick = () => forceUpdate();
+
+  el("splashAddBtn").onclick = () => el("splashFileInput").click();
+  el("splashFileInput").onchange = (e) => {
+    addSplashImages(e.target.files);
+    e.target.value = ""; // so picking the same file again still fires
+  };
 
   el("loadingRetryBtn").onclick = () => tryStoredKey();
 }
@@ -2956,7 +2966,229 @@ async function forceUpdate() {
   }
 }
 
+// --- Splash screen ---------------------------------------------------
+//
+// On every open one image (or GIF, or short video) is picked at random from
+// the set added in Settings and shown full screen for SPLASH_MS, or until
+// tapped. The set is shared by every device on the passphrase: on Dropbox
+// each file is `/splash/<id>.bin`, encrypted with the list key (see
+// encryptBytes), and an encrypted index lists them. Each device keeps the
+// files decrypted in IndexedDB — localStorage holds only a few MB of
+// strings — and the index in localStorage, so the splash never waits on
+// the network: a file this device doesn't have yet is fetched in the
+// background after unlock (syncSplash) and shows from the next open.
+// Nothing about the images is in the public app shell.
+
+const SPLASH_INDEX_PATH = "/splash/index.json";
+const LS_SPLASH_INDEX = "shared_todo_splash_index";
+const SPLASH_MS = 3000;
+const SPLASH_MAX_BYTES = 25 * 1024 * 1024;
+
+function emptySplashIndex() {
+  return { version: 1, updated_at: null, images: [] };
+}
+
+function loadSplashIndex() {
+  const raw = localStorage.getItem(LS_SPLASH_INDEX);
+  return raw ? JSON.parse(raw) : emptySplashIndex();
+}
+
+function saveSplashIndexLocally(index) {
+  localStorage.setItem(LS_SPLASH_INDEX, JSON.stringify(index));
+}
+
+// The decrypted files, keyed by image id: { id, blob }.
+const SplashStore = (() => {
+  let dbPromise = null;
+  function open() {
+    if (!dbPromise) {
+      dbPromise = new Promise((resolve, reject) => {
+        const req = indexedDB.open("shared_todo", 1);
+        req.onupgradeneeded = () => req.result.createObjectStore("splash", { keyPath: "id" });
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+    return dbPromise;
+  }
+  async function run(mode, fn) {
+    const db = await open();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction("splash", mode);
+      const req = fn(tx.objectStore("splash"));
+      tx.oncomplete = () => resolve(req.result);
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+  return {
+    get: (id) => run("readonly", (s) => s.get(id)),
+    put: (record) => run("readwrite", (s) => s.put(record)),
+    remove: (id) => run("readwrite", (s) => s.delete(id)),
+    keys: () => run("readonly", (s) => s.getAllKeys()),
+    clear: () => run("readwrite", (s) => s.clear()),
+  };
+})();
+
+async function fetchSplashIndex() {
+  const text = await DropboxFile.download(SPLASH_INDEX_PATH);
+  return text === null ? emptySplashIndex() : decryptPayload(cryptoKey, text);
+}
+
+async function saveSplashIndex(index) {
+  index.updated_at = new Date().toISOString();
+  await DropboxFile.upload(SPLASH_INDEX_PATH, await encryptPayload(cryptoKey, index));
+  saveSplashIndexLocally(index);
+}
+
+// Brings this device's copies in line with Dropbox: fetches what is
+// missing, drops what was removed elsewhere. Run after every unlock, in the
+// background; a failure just leaves the set as it was until next time.
+async function syncSplash() {
+  try {
+    const index = await fetchSplashIndex();
+    saveSplashIndexLocally(index);
+    const have = new Set(await SplashStore.keys());
+    const wanted = new Set(index.images.map((i) => i.id));
+    for (const id of have) if (!wanted.has(id)) await SplashStore.remove(id);
+    for (const image of index.images) {
+      if (have.has(image.id)) continue;
+      const buffer = await DropboxFile.downloadBytes(image.file);
+      if (buffer === null) continue;
+      const bytes = await decryptBytes(cryptoKey, buffer);
+      await SplashStore.put({ id: image.id, blob: new Blob([bytes], { type: image.type }) });
+    }
+    if (el("settingsPanel").classList.contains("open")) renderSplashSettings();
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+function splashMediaElement(type, url) {
+  if (type.startsWith("video/")) {
+    const video = document.createElement("video");
+    Object.assign(video, { src: url, muted: true, autoplay: true, loop: true, playsInline: true });
+    return video;
+  }
+  const img = document.createElement("img");
+  img.src = url;
+  img.alt = "";
+  return img;
+}
+
+// The overlay goes up synchronously, before the index or the file is read,
+// so the list (drawn from cache within milliseconds of load) never flashes
+// before it; it comes straight down again if there turns out to be nothing
+// to show on this device.
+async function showSplash() {
+  const index = loadSplashIndex();
+  if (index.images.length === 0) return;
+  const overlay = el("splash");
+  overlay.classList.add("open");
+  let url = null;
+  let timer = null;
+  const close = () => {
+    clearTimeout(timer);
+    overlay.classList.remove("open");
+    overlay.innerHTML = "";
+    if (url) URL.revokeObjectURL(url);
+  };
+  overlay.onclick = close;
+  const have = new Set(await SplashStore.keys());
+  const candidates = index.images.filter((i) => have.has(i.id));
+  if (candidates.length === 0) return close();
+  const pick = candidates[Math.floor(Math.random() * candidates.length)];
+  const record = await SplashStore.get(pick.id);
+  if (!record || !overlay.classList.contains("open")) return close();
+  url = URL.createObjectURL(record.blob);
+  overlay.appendChild(splashMediaElement(pick.type, url));
+  timer = setTimeout(close, SPLASH_MS);
+}
+
+// Settings: one thumbnail per image with a ✕, and an add button taking
+// several files at once. An add uploads the encrypted file first and the
+// index after, so the index never lists a file that isn't there; a removal
+// takes it out of the index first for the same reason. The index is
+// re-read from Dropbox before each change, so an add on the other phone in
+// the meantime isn't overwritten.
+let splashThumbUrls = [];
+
+async function renderSplashSettings() {
+  const grid = el("splashGrid");
+  grid.innerHTML = "";
+  for (const url of splashThumbUrls) URL.revokeObjectURL(url);
+  splashThumbUrls = [];
+  const index = loadSplashIndex();
+  el("splashEmpty").hidden = index.images.length > 0;
+  for (const image of index.images) {
+    const cell = document.createElement("div");
+    cell.className = "splash-thumb";
+    const record = await SplashStore.get(image.id);
+    if (record) {
+      const url = URL.createObjectURL(record.blob);
+      splashThumbUrls.push(url);
+      cell.appendChild(splashMediaElement(image.type, url));
+    } else {
+      cell.textContent = "…";
+      cell.title = "Not on this device yet";
+    }
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.textContent = "✕";
+    remove.title = "Remove " + image.name;
+    remove.onclick = () => removeSplashImage(image.id);
+    cell.appendChild(remove);
+    grid.appendChild(cell);
+  }
+}
+
+async function addSplashImages(files) {
+  const picked = [...files];
+  const tooBig = picked.filter((f) => f.size > SPLASH_MAX_BYTES);
+  if (tooBig.length > 0) toast(tooBig.length + " file(s) over 25 MB skipped.");
+  const ok = picked.filter((f) => f.size <= SPLASH_MAX_BYTES);
+  if (ok.length === 0) return;
+  // Ask the browser not to evict the local copies under storage pressure.
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
+  toast("Uploading " + ok.length + " image(s)...");
+  try {
+    const added = [];
+    for (const file of ok) {
+      const id = crypto.randomUUID();
+      const path = "/splash/" + id + ".bin";
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      await DropboxFile.upload(path, await encryptBytes(cryptoKey, bytes));
+      await SplashStore.put({ id, blob: new Blob([bytes], { type: file.type }) });
+      added.push({ id, name: file.name, type: file.type, size: file.size, file: path, added_at: new Date().toISOString() });
+    }
+    const index = await fetchSplashIndex();
+    index.images.push(...added);
+    await saveSplashIndex(index);
+    toast("Added " + added.length + " image(s).");
+  } catch (err) {
+    console.error(err);
+    toast("Couldn't upload — check your connection and try again.");
+  }
+  await renderSplashSettings();
+}
+
+async function removeSplashImage(id) {
+  if (!confirm("Remove this image from the splash screen on every device?")) return;
+  try {
+    const index = await fetchSplashIndex();
+    const image = index.images.find((i) => i.id === id);
+    index.images = index.images.filter((i) => i.id !== id);
+    await saveSplashIndex(index);
+    await SplashStore.remove(id);
+    if (image) await DropboxFile.remove(image.file);
+  } catch (err) {
+    console.error(err);
+    toast("Couldn't remove — check your connection and try again.");
+  }
+  await renderSplashSettings();
+}
+
 async function main() {
+  showSplash();
   wireEvents();
 
   try {
@@ -2974,6 +3206,8 @@ async function main() {
   const unlocked = await tryStoredKey();
   if (!unlocked) {
     showScreen("passphrase");
+  } else if (cryptoKey) {
+    syncSplash();
   }
 
   // An installed PWA can sit in the background for days, so one check at
