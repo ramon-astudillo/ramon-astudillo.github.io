@@ -219,6 +219,17 @@
   .todo-check.done { background: var(--accent); }
   .todo-check svg { width: 15px; height: 15px; stroke: white; fill: none; visibility: hidden; }
   .todo-check.done svg { visibility: visible; }
+  /* A counter's + sits where a todo's check circle does, in the same
+     circle, so the two read as the same "act on this row" control. */
+  .counter-btn {
+    width: 26px; height: 26px; min-width: 26px; border-radius: 50%;
+    border: 2px solid var(--accent); background: none; cursor: pointer; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--accent); font-size: 1.15rem; font-weight: 700; line-height: 1;
+  }
+  .counter-btn:active { background: var(--accent); color: white; }
+  .counter-btn.sub-check { font-size: 0.95rem; }
+  .counter-value { font-size: 0.85rem; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
   .todo-icon { font-size: 1.25rem; line-height: 1.2; flex-shrink: 0; }
   .todo-item.sub-item .todo-icon { font-size: 1.05rem; }
   .todo-text { flex: 1; font-size: 1rem; word-break: break-word; }
@@ -342,7 +353,18 @@
   }
   .edit-toggle:last-child { border-bottom: none; }
   .edit-toggle .field-label { flex: 1; margin: 0; padding: 12px 0; font-size: 0.95rem; color: var(--text); cursor: pointer; }
-  .edit-toggle input[type=checkbox] { width: 20px; height: 20px; margin: 0; }
+  .edit-toggle input[type=checkbox], .edit-toggle input[type=radio] { width: 20px; height: 20px; margin: 0; accent-color: var(--accent); }
+  .edit-toggle .counter-value { margin-right: 12px; }
+  .press-row {
+    display: flex; justify-content: space-between; align-items: center;
+    border-bottom: 1px solid var(--border); font-size: 0.9rem; font-variant-numeric: tabular-nums;
+  }
+  .press-row:last-child { border-bottom: none; }
+  .press-row.removed span { text-decoration: line-through; color: var(--done); }
+  .press-delete {
+    background: none; border: none; color: var(--muted); font-size: 1rem;
+    padding: 10px 4px 10px 16px; cursor: pointer;
+  }
   .action-list { display: flex; flex-direction: column; }
   .action-item {
     background: none; border: none; border-bottom: 1px solid var(--border);

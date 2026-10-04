@@ -67,7 +67,7 @@ function clearPersistedQueue(boardId) {
 }
 const assigningIds = new Set(); // todo/sub-todo IDs whose assignee-picker panel is open (local UI state, not synced; opened by swipe-right; ids are UUIDs so one Set covers both levels)
 const shownChildrenIds = new Set(); // top-level todo IDs whose sub-todo list + add-sub-todo form is shown (local UI state, not synced)
-const noteAddMode = new Set(); // top-level todo IDs whose add-sub-item form is currently in "add note" mode (local UI state, not synced)
+const subAddMode = new Map(); // top-level todo ID -> what its add-sub-item form adds, "note" or "counter"; absent means "todo" (local UI state, not synced)
 
 const el = (id) => document.getElementById(id);
 
@@ -377,7 +377,7 @@ function parseImportLine(line) {
 // line: pendingOps is flushed with a read-check-write Dropbox round trip per
 // op (see syncPending), so 30 separate adds would mean 30 serialized
 // download+upload cycles instead of one.
-function bulkAdd(lines, isNote) {
+function bulkAdd(lines, mode) {
   const parsed = lines.map(parseImportLine).filter((p) => p.text);
   if (parsed.length === 0) return;
 
@@ -401,11 +401,10 @@ function bulkAdd(lines, isNote) {
   // survives persistQueue()/loadPersistedQueue() and a later replay.
   const now = new Date().toISOString();
   const todosToAdd = fresh.map((p) => {
-    const item = isNote
-      ? { id: crypto.randomUUID(), type: "note", text: p.text, bold: false, created_at: now, updated_at: now }
-      : { id: crypto.randomUUID(), text: p.text, done: p.done, created_at: now, updated_at: now };
+    const item = newEntity(mode, p.text, now);
+    if (mode === "todo") item.done = p.done;
     if (p.icon) item.icon = p.icon;
-    if (!isNote && p.due_date) {
+    if (mode === "todo" && p.due_date) {
       item.due_date = p.due_date;
       if (p.due_time) item.due_time = p.due_time;
     }
@@ -445,6 +444,47 @@ function earliestChildDeadline(entity) {
   });
 }
 
+// --- Counters --------------------------------------------------------
+//
+// A counter is `{ type: "counter", text, presses, display }`: its + button
+// records one ISO timestamp per press, kept sorted oldest first (ISO strings
+// sort chronologically), and `display` picks what the row shows of them. It
+// has no `done` and never any children of its own, but can be a sub-item.
+const COUNTER_DISPLAYS = [
+  ["count", "Count"],
+  ["since", "Days since last"],
+  ["average", "Average between"],
+];
+
+function isCounter(entity) {
+  return entity.type === "counter";
+}
+
+function localDayStart(date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+// What the row shows, per `display`. Days since is counted in calendar
+// days, as the deadline badge is, so a press late last night is "1d ago"
+// this morning. The average is over the gaps between presses,
+// (last - first) / (presses - 1), so it needs two of them.
+function counterValue(entity) {
+  const presses = entity.presses || [];
+  if (entity.display === "since") {
+    if (presses.length === 0) return "—";
+    const last = new Date(presses[presses.length - 1]);
+    const days = Math.round((localDayStart(new Date()) - localDayStart(last)) / 86400000);
+    return days === 0 ? "Today" : days + "d ago";
+  }
+  if (entity.display === "average") {
+    if (presses.length < 2) return "—";
+    const mins = (new Date(presses[presses.length - 1]) - new Date(presses[0])) / (presses.length - 1) / 60000;
+    if (mins < 1440) return "every " + formatDuration(Math.round(mins));
+    return "every " + (mins / 1440).toFixed(1).replace(/\.0$/, "") + "d";
+  }
+  return String(presses.length);
+}
+
 const TRASH_BIN_SVG = '<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>';
 const PERSON_SVG = '<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>';
 const DRAG_HANDLE_SVG = '<svg viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.5"></circle><circle cx="15" cy="6" r="1.5"></circle><circle cx="9" cy="12" r="1.5"></circle><circle cx="15" cy="12" r="1.5"></circle><circle cx="9" cy="18" r="1.5"></circle><circle cx="15" cy="18" r="1.5"></circle></svg>';
@@ -460,7 +500,7 @@ const DRAG_HANDLE_SVG = '<svg viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.5">
 // { el, handle } rather than just the row element so callers can wire the
 // handle to attachDragReorder against the outer <li>, which drag needs to
 // translate as a whole (see renderTodoItem / renderChildrenSection).
-function renderRow(entity, { isSub, onToggle, onMenu, onRowClick, onDelete, onAssignOpen }) {
+function renderRow(entity, { isSub, onToggle, onPress, onMenu, onRowClick, onDelete, onAssignOpen }) {
   const wrap = document.createElement("div");
   wrap.className = "swipe-wrap";
 
@@ -489,8 +529,17 @@ function renderRow(entity, { isSub, onToggle, onMenu, onRowClick, onDelete, onAs
   handle.onclick = (e) => e.stopPropagation();
   row.appendChild(handle);
 
+  // The circle at the start of the row: a check for a todo, a + for a
+  // counter, nothing for a note. Assignment tints whichever one it is.
   let check = null;
-  if (!isNote) {
+  if (isCounter(entity)) {
+    check = document.createElement("button");
+    check.type = "button";
+    check.className = "counter-btn" + (isSub ? " sub-check" : "");
+    check.textContent = "+";
+    check.onclick = (e) => { e.stopPropagation(); onPress(); };
+    row.appendChild(check);
+  } else if (!isNote) {
     check = document.createElement("button");
     check.className = "todo-check" + (isSub ? " sub-check" : "") + (entity.done ? " done" : "");
     check.innerHTML = '<svg viewBox="0 0 24 24" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
@@ -516,7 +565,7 @@ function renderRow(entity, { isSub, onToggle, onMenu, onRowClick, onDelete, onAs
   // deadline surfaces on the parent below — a collapsed row shouldn't hide
   // that something inside it is on fire. Done sub-items stop counting.
   if (entity.urgent || children.some((c) => c.urgent && !c.done)) row.classList.add("urgent");
-  const checkableChildren = children.filter((c) => c.type !== "note");
+  const checkableChildren = children.filter((c) => c.type !== "note" && !isCounter(c));
   if (!isSub && checkableChildren.length > 0) {
     const doneCount = checkableChildren.filter((c) => c.done).length;
     const countSpan = document.createElement("span");
@@ -525,9 +574,16 @@ function renderRow(entity, { isSub, onToggle, onMenu, onRowClick, onDelete, onAs
     row.appendChild(countSpan);
   }
 
+  if (isCounter(entity)) {
+    const value = document.createElement("span");
+    value.className = "counter-value";
+    value.textContent = counterValue(entity);
+    row.appendChild(value);
+  }
+
   let inheritedDeadline = false;
   let badgeEntity = entity;
-  if (!isSub && !isNote && !entity.due_date) {
+  if (!isSub && !isNote && !isCounter(entity) && !entity.due_date) {
     const inherited = earliestChildDeadline(entity);
     if (inherited) { badgeEntity = inherited; inheritedDeadline = true; }
   }
@@ -592,6 +648,8 @@ function markdownLine(entity, indent) {
   const prefix = "\t".repeat(indent);
   const deadline = entity.due_date ? " @" + entity.due_date + (entity.due_time ? "T" + entity.due_time : "") : "";
   if (entity.type === "note") return prefix + textWithIcon(entity);
+  // Not round-trippable: the importer reads this back as a plain todo.
+  if (isCounter(entity)) return prefix + textWithIcon(entity) + ": " + (entity.presses || []).length;
   return prefix + "- [" + (entity.done ? "x" : " ") + "] " + textWithIcon(entity) + deadline;
 }
 
@@ -696,6 +754,8 @@ function renderAssignPanel(entity, onAssign) {
 // Delete are not here at all: the two swipes already are those.
 let editState = null; // { ref, initial, read } while the page is open, else null
 
+// `removed` is the counter presses struck out on the page, which Save sends
+// as an "unpress" of its own rather than as part of the field patch.
 function draftOf(entity) {
   return {
     text: textWithIcon(entity),
@@ -703,6 +763,8 @@ function draftOf(entity) {
     due_time: entity.due_time || "",
     urgent: !!entity.urgent,
     bold: !!entity.bold,
+    display: entity.display || "count",
+    removed: [],
   };
 }
 
@@ -724,11 +786,87 @@ function draftPatch(initial, draft) {
   }
   if (draft.urgent !== initial.urgent) patch.urgent = draft.urgent;
   if (draft.bold !== initial.bold) patch.bold = draft.bold;
+  if (draft.display !== initial.display) patch.display = draft.display;
   return patch;
 }
 
 function isEditDirty() {
-  return Object.keys(draftPatch(editState.initial, editState.read())).length > 0;
+  const draft = editState.read();
+  return Object.keys(draftPatch(editState.initial, draft)).length > 0 || draft.removed.length > 0;
+}
+
+function formatPress(at) {
+  const d = new Date(at);
+  const opts = { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false };
+  if (d.getFullYear() !== new Date().getFullYear()) opts.year = "numeric";
+  return d.toLocaleString([], opts);
+}
+
+// A counter's display choice, each option previewing what the row would
+// show with it, and its presses, newest first. A press is struck out by its
+// ✕ and put back by a second tap; nothing is deleted until Save. A long
+// history is cut to the latest PRESS_LIST_LIMIT, with a button for the rest.
+const PRESS_LIST_LIMIT = 50;
+
+function counterSections(entity, initial) {
+  const radios = document.createElement("div");
+  for (const [key, label] of COUNTER_DISPLAYS) {
+    const row = document.createElement("div");
+    row.className = "edit-toggle";
+    const input = document.createElement("input");
+    input.type = "radio";
+    input.name = "editDisplay";
+    input.id = "editDisplay-" + key;
+    input.value = key;
+    input.checked = initial.display === key;
+    const preview = document.createElement("span");
+    preview.className = "counter-value";
+    preview.textContent = counterValue({ ...entity, display: key });
+    row.append(fieldLabel(label, input.id), preview, input);
+    radios.appendChild(row);
+  }
+
+  const presses = (entity.presses || []).slice().reverse();
+  const removed = new Set();
+  const list = document.createElement("div");
+  const addRows = (from, to) => {
+    for (const at of presses.slice(from, to)) {
+      const row = document.createElement("div");
+      row.className = "press-row";
+      const when = document.createElement("span");
+      when.textContent = formatPress(at);
+      const strike = pageButton("✕", () => {
+        if (removed.has(at)) removed.delete(at); else removed.add(at);
+        row.classList.toggle("removed", removed.has(at));
+        strike.textContent = removed.has(at) ? "↺" : "✕";
+        strike.title = removed.has(at) ? "Keep this press" : "Delete this press";
+      }, "press-delete");
+      strike.title = "Delete this press";
+      row.append(when, strike);
+      list.appendChild(row);
+    }
+  };
+  if (presses.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "assign-empty";
+    empty.textContent = "No presses yet.";
+    list.appendChild(empty);
+  }
+  addRows(0, PRESS_LIST_LIMIT);
+  const section = editSection(fieldLabel("Presses (" + presses.length + ")"), list);
+  if (presses.length > PRESS_LIST_LIMIT) {
+    const more = pageButton("Show all " + presses.length, () => {
+      more.remove();
+      addRows(PRESS_LIST_LIMIT, presses.length);
+    }, "action-item");
+    section.appendChild(more);
+  }
+
+  return {
+    sections: [editSection(fieldLabel("Display"), radios), section],
+    readDisplay: () => radios.querySelector("input:checked").value,
+    readRemoved: () => [...removed],
+  };
 }
 
 function pageButton(label, onClick, cls) {
@@ -770,6 +908,7 @@ function openEditPage(ref) {
   const entity = findEntity(ref);
   if (!entity) return;
   const isNote = entity.type === "note";
+  const counter = isCounter(entity);
   const initial = draftOf(entity);
   const page = el("editPage");
   page.innerHTML = "";
@@ -779,7 +918,7 @@ function openEditPage(ref) {
   const back = pageButton("←", () => history.back(), "edit-back");
   back.title = "Back without saving";
   const heading = document.createElement("h2");
-  heading.textContent = isNote ? "Edit note" : "Edit item";
+  heading.textContent = isNote ? "Edit note" : counter ? "Edit counter" : "Edit item";
   header.append(back, heading, pageButton("Save", saveAndLeave, "action-btn accent"));
 
   const body = document.createElement("div");
@@ -798,7 +937,7 @@ function openEditPage(ref) {
 
   let dateInput = null;
   let timeInput = null;
-  if (!isNote) {
+  if (!isNote && !counter) {
     const row = document.createElement("div");
     row.className = "action-date-row";
     dateInput = document.createElement("input");
@@ -828,6 +967,9 @@ function openEditPage(ref) {
     flags.appendChild(bold.row);
   }
   body.appendChild(flags);
+
+  const counterParts = counter ? counterSections(entity, initial) : null;
+  if (counterParts) body.append(...counterParts.sections);
 
   // Copy and Export look the item up only after the save, so they copy what
   // was just saved rather than what the page opened on.
@@ -881,6 +1023,8 @@ function openEditPage(ref) {
       due_time: timeInput ? timeInput.value : initial.due_time,
       urgent: urgent.input.checked,
       bold: bold ? bold.input.checked : initial.bold,
+      display: counterParts ? counterParts.readDisplay() : initial.display,
+      removed: counterParts ? counterParts.readRemoved() : [],
     }),
   };
   // The page is a history entry of its own, so the system back closes it
@@ -901,12 +1045,28 @@ function saveDraft() {
     return false;
   }
   const patch = draftPatch(initial, draft);
-  if (Object.keys(patch).length === 0) return true;
-  if (!findEntity(ref)) {
+  const hasPatch = Object.keys(patch).length > 0;
+  if (!hasPatch && draft.removed.length === 0) return true;
+  const entity = findEntity(ref);
+  if (!entity) {
     toast("This item was deleted elsewhere — nothing saved.");
     return true;
   }
-  editWithUndo(ref, patch, "Saved");
+  // One Undo for the whole save, like the delete's. Each undo is a second,
+  // ordinary op carrying the old values rather than a retraction of the
+  // first, which is what keeps it correct after the save has synced.
+  const ops = [];
+  const undos = [];
+  if (hasPatch) {
+    undos.push(editOp(ref, patchSnapshot(entity, patch)));
+    ops.push(editOp(ref, patch));
+  }
+  if (draft.removed.length > 0) {
+    ops.push(pressOp(ref, "unpress", draft.removed));
+    undos.push(pressOp(ref, "press", draft.removed));
+  }
+  for (const op of ops) applyEdit(op);
+  toast("Saved", { label: "Undo", onClick: () => { for (const op of undos) applyEdit(op); } });
   return true;
 }
 
@@ -953,8 +1113,10 @@ function renderTodoItem(todo) {
   const { el: rowEl, handle } = renderRow(todo, {
     isSub: false,
     onToggle: () => toggleTodo(todo.id),
+    onPress: () => pressCounter({ id: todo.id, parentId: null }),
     onMenu: () => openEditPage({ id: todo.id, parentId: null }),
-    onRowClick: () => { shownChildrenIds.has(todo.id) ? shownChildrenIds.delete(todo.id) : shownChildrenIds.add(todo.id); render(); },
+    // A counter holds no sub-items, so there is nothing for a tap to open.
+    onRowClick: isCounter(todo) ? null : () => { shownChildrenIds.has(todo.id) ? shownChildrenIds.delete(todo.id) : shownChildrenIds.add(todo.id); render(); },
     onDelete: () => deleteTodoWithUndo(todo.id),
     onAssignOpen: () => { assigningIds.has(todo.id) ? assigningIds.delete(todo.id) : assigningIds.add(todo.id); render(); },
   });
@@ -973,7 +1135,7 @@ function renderTodoItem(todo) {
     wrap.appendChild(panel);
   }
 
-  if (shownChildrenIds.has(todo.id)) wrap.appendChild(renderChildrenSection(todo));
+  if (shownChildrenIds.has(todo.id) && !isCounter(todo)) wrap.appendChild(renderChildrenSection(todo));
 
   return wrap;
 }
@@ -997,6 +1159,7 @@ function renderChildrenSection(todo) {
       const { el: childRowEl, handle: childHandle } = renderRow(child, {
         isSub: true,
         onToggle: () => toggleSubTodo(todo.id, child.id),
+        onPress: () => pressCounter({ id: child.id, parentId: todo.id }),
         onMenu: () => openEditPage({ id: child.id, parentId: todo.id }),
         onDelete: () => deleteSubTodoWithUndo(todo.id, child.id),
         onAssignOpen: () => { assigningIds.has(child.id) ? assigningIds.delete(child.id) : assigningIds.add(child.id); render(); },
@@ -1026,17 +1189,18 @@ function renderChildrenSection(todo) {
   const addForm = document.createElement("form");
   addForm.className = "sub-add-row";
 
+  const mode = subAddMode.get(todo.id) || "todo";
   const noteModeBtn = document.createElement("button");
   noteModeBtn.type = "button";
-  noteModeBtn.className = "note-mode-btn" + (noteAddMode.has(todo.id) ? " active" : "");
-  noteModeBtn.title = "Add a note instead of a checklist item";
-  noteModeBtn.textContent = "N";
+  noteModeBtn.className = "note-mode-btn";
+  styleAddModeBtn(noteModeBtn, mode);
   noteModeBtn.onclick = () => {
     // render() rebuilds this whole section from scratch, which would
     // otherwise silently wipe out whatever was already typed — carry it
     // over to the freshly-built input.
     const draft = addInput.value;
-    noteAddMode.has(todo.id) ? noteAddMode.delete(todo.id) : noteAddMode.add(todo.id);
+    const next = nextAddMode(mode);
+    if (next === "todo") subAddMode.delete(todo.id); else subAddMode.set(todo.id, next);
     render();
     const revived = document.getElementById("subAddInput-" + todo.id);
     if (revived) {
@@ -1048,12 +1212,11 @@ function renderChildrenSection(todo) {
   const addInput = document.createElement("input");
   addInput.type = "text";
   addInput.id = "subAddInput-" + todo.id; // looked up after a re-render to restore in-progress text (see noteModeBtn.onclick)
-  addInput.placeholder = noteAddMode.has(todo.id) ? "Add a note..." : "Add a sub-item...";
+  addInput.placeholder = addModePlaceholder(mode, true);
   addInput.autocomplete = "off";
   addForm.onsubmit = (e) => {
     e.preventDefault();
-    if (noteAddMode.has(todo.id)) addSubNote(todo.id, addInput.value);
-    else addSubTodo(todo.id, addInput.value);
+    addSubItem(todo.id, addInput.value, mode);
     addInput.value = "";
   };
   addForm.append(noteModeBtn, addInput);
@@ -1729,6 +1892,7 @@ function applyPatch(t, patch) {
   // Dropped rather than stored as false, so an item that was never
   // marked urgent stays byte-identical to what older builds wrote.
   if (patch.urgent !== undefined) { if (patch.urgent) t.urgent = true; else delete t.urgent; }
+  if ("display" in patch) t.display = patch.display;
   if ("due_date" in patch) {
     if (patch.due_date) {
       t.due_date = patch.due_date;
@@ -1840,6 +2004,21 @@ function applyOp(list, op) {
       parent.updated_at = op.now;
       break;
     }
+    // A counter's presses, at either level. `ats` is a list so one op can
+    // carry a whole batch of deletions (and its undo). A timestamp already
+    // present is not added twice, so replaying a press is harmless.
+    case "press":
+    case "unpress": {
+      const t = findInList(list, op.id, op.parentId);
+      if (!t) break;
+      const have = new Set(t.presses || []);
+      for (const at of op.ats) {
+        if (op.type === "press") have.add(at); else have.delete(at);
+      }
+      t.presses = [...have].sort();
+      t.updated_at = op.now;
+      break;
+    }
     case "assign": {
       const t = list.find((x) => x.id === op.id);
       if (t) { t.assigned_to = op.userId; t.updated_at = op.now; }
@@ -1946,7 +2125,7 @@ async function loadAndRender(allowOfflineFallback) {
   if (cached && cached.pendingOps.length > 0) {
     // Reached Dropbox fine, but there's also a leftover local queue — restore
     // it on top of the (possibly newer) remote base and let syncPending do
-    // its normal conflict check/replay/push instead of discarding it.
+    // its normal replay/push instead of discarding it.
     todos = cached.todos;
     loadedUpdatedAt = cached.loadedUpdatedAt;
     pendingOps = cached.pendingOps;
@@ -1989,17 +2168,12 @@ async function syncPending() {
   try {
     const remoteDoc = await fetchRemoteDoc();
 
-    if (remoteDoc.updated_at !== loadedUpdatedAt) {
-      todos = remoteDoc.todos;
-      loadedUpdatedAt = remoteDoc.updated_at;
-      pendingOps = [];
-      persistQueue(); // keep the last-known-good cache, just with an empty queue now
-      render();
-      setSyncState("synced");
-      toast("List changed elsewhere — reloading latest. Please redo your edit.");
-      return;
-    }
-
+    // The queue is replayed onto whatever is on Dropbox now, including when
+    // another device wrote since we last read it: every op addresses items
+    // by id and touches only what it names, so it lands on the newer list
+    // as it would have on ours. This used to discard the queue on any such
+    // change ("please redo your edit"), which a counter can't afford — two
+    // people pressing the same counter is exactly when it happens.
     for (const op of pendingOps) applyOp(remoteDoc.todos, op);
     remoteDoc.updated_at = new Date().toISOString();
 
@@ -2018,16 +2192,38 @@ async function syncPending() {
   }
 }
 
-// `isNote`: same checklist-item-vs-note choice sub-items already have (see
-// noteAddMode/addSubNote) — top-level items support it too via the add
-// bar's "N" toggle.
-function addTodo(text, isNote) {
+// What an add bar adds: "todo", "note" or "counter". Both bars (the
+// top-level one and each parent's sub-item one) cycle through the three
+// with their mode button, which shows N for a note and + for a counter.
+function nextAddMode(mode) {
+  return mode === "todo" ? "note" : mode === "note" ? "counter" : "todo";
+}
+
+function styleAddModeBtn(btn, mode) {
+  btn.classList.toggle("active", mode !== "todo");
+  btn.textContent = mode === "counter" ? "+" : "N";
+  btn.title = mode === "todo" ? "Adding checklist items — tap for notes"
+    : mode === "note" ? "Adding notes — tap for counters"
+    : "Adding counters — tap for checklist items";
+}
+
+function addModePlaceholder(mode, isSub) {
+  if (mode === "note") return "Add a note...";
+  if (mode === "counter") return "Add a counter...";
+  return isSub ? "Add a sub-item..." : "Add an item...";
+}
+
+function newEntity(mode, text, now) {
+  const base = { id: crypto.randomUUID(), text, created_at: now, updated_at: now };
+  if (mode === "note") return { ...base, type: "note", bold: false };
+  if (mode === "counter") return { ...base, type: "counter", presses: [], display: "count" };
+  return { ...base, done: false };
+}
+
+function addTodo(text, mode) {
   const { icon, text: trimmed } = splitLeadingIcon(text);
   if (!trimmed) return;
-  const now = new Date().toISOString();
-  const todo = isNote
-    ? { id: crypto.randomUUID(), type: "note", text: trimmed, bold: false, created_at: now, updated_at: now }
-    : { id: crypto.randomUUID(), text: trimmed, done: false, created_at: now, updated_at: now };
+  const todo = newEntity(mode, trimmed, new Date().toISOString());
   if (icon) todo.icon = icon;
   applyEdit({ type: "add", todo });
 }
@@ -2040,13 +2236,14 @@ function deleteTodo(id) {
   applyEdit({ type: "delete", id });
 }
 
-// Sub-todos are one level deep only: `children` lives on a top-level todo,
-// and child todos never have children of their own.
-function addSubTodo(parentId, text) {
+// Sub-items are one level deep only: `children` lives on a top-level todo,
+// and children never have children of their own. Notes and counters reuse
+// the "addSub"/"editSub" ops via their `type` tag.
+function addSubItem(parentId, text, mode) {
   const { icon, text: trimmed } = splitLeadingIcon(text);
   if (!trimmed) return;
   const now = new Date().toISOString();
-  const todo = { id: crypto.randomUUID(), text: trimmed, done: false, created_at: now, updated_at: now };
+  const todo = newEntity(mode, trimmed, now);
   if (icon) todo.icon = icon;
   applyEdit({ type: "addSub", parentId, now, todo });
 }
@@ -2118,18 +2315,6 @@ function reorderSubTodo(parentId, childId, toIndex) {
   applyEdit({ type: "reorderSub", parentId, childId, toIndex, now: new Date().toISOString() });
 }
 
-// Note sub-items are plain text (no checkbox, no due date) used as
-// separators/remarks; they reuse the "addSub"/"editSub" op types via a
-// `type: "note"` tag on the child object, so no sync/op-log changes needed.
-function addSubNote(parentId, text) {
-  const { icon, text: trimmed } = splitLeadingIcon(text);
-  if (!trimmed) return;
-  const now = new Date().toISOString();
-  const todo = { id: crypto.randomUUID(), type: "note", text: trimmed, bold: false, created_at: now, updated_at: now };
-  if (icon) todo.icon = icon;
-  applyEdit({ type: "addSub", parentId, now, todo });
-}
-
 function deleteSubTodo(parentId, childId) {
   applyEdit({ type: "deleteSub", parentId, childId, now: new Date().toISOString() });
 }
@@ -2139,9 +2324,13 @@ function deleteSubTodo(parentId, childId) {
 // Looked up afresh every time rather than kept, because a sync replaces
 // `todos` wholesale and a held object would be a detached copy.
 function findEntity(ref) {
-  if (!ref.parentId) return todos.find((t) => t.id === ref.id) || null;
-  const parent = todos.find((t) => t.id === ref.parentId);
-  return (parent && parent.children && parent.children.find((c) => c.id === ref.id)) || null;
+  return findInList(todos, ref.id, ref.parentId);
+}
+
+function findInList(list, id, parentId) {
+  if (!parentId) return list.find((t) => t.id === id) || null;
+  const parent = list.find((t) => t.id === parentId);
+  return (parent && parent.children && parent.children.find((c) => c.id === id)) || null;
 }
 
 function editOp(ref, patch) {
@@ -2159,19 +2348,21 @@ function patchSnapshot(entity, patch) {
   if ("text" in patch) { back.text = entity.text; back.icon = entity.icon || null; }
   if ("bold" in patch) back.bold = !!entity.bold;
   if ("urgent" in patch) back.urgent = !!entity.urgent;
+  if ("display" in patch) back.display = entity.display || "count";
   if ("due_date" in patch) { back.due_date = entity.due_date || null; back.due_time = entity.due_time || null; }
   return back;
 }
 
-// Every saved edit offers the same Undo a delete does. The undo is a second,
-// ordinary edit op carrying the old values rather than a retraction of the
-// first, which is what keeps it correct after the edit has already synced.
-function editWithUndo(ref, patch, message) {
-  const entity = findEntity(ref);
-  if (!entity) return;
-  const back = patchSnapshot(entity, patch);
-  applyEdit(editOp(ref, patch));
-  toast(message, { label: "Undo", onClick: () => applyEdit(editOp(ref, back)) });
+function pressOp(ref, type, ats) {
+  return { type, id: ref.id, parentId: ref.parentId || null, ats, now: new Date().toISOString() };
+}
+
+// One press of a counter's +. Mis-taps are easy, so it offers an Undo,
+// which takes back exactly that press.
+function pressCounter(ref) {
+  const at = new Date().toISOString();
+  applyEdit(pressOp(ref, "press", [at]));
+  toast("Counted", { label: "Undo", onClick: () => applyEdit(pressOp(ref, "unpress", [at])) });
 }
 
 // `userId` is a device id from `users`, or null to unassign.
@@ -2207,7 +2398,8 @@ function duplicateWithUndo(ref) {
     copy.id = crypto.randomUUID();
     copy.created_at = now;
     copy.updated_at = now;
-    if (copy.type !== "note") copy.done = false;
+    if (isCounter(copy)) copy.presses = [];
+    else if (copy.type !== "note") copy.done = false;
     delete copy.done_at;
     if (copy.children) copy.children = copy.children.map(fresh);
     return copy;
@@ -2338,20 +2530,20 @@ function wireEvents() {
   };
 
   // The add bar is static markup (not rebuilt by render()), so unlike the
-  // per-item note toggle there's no re-render to lose typed text to —
-  // toggling just flips a closure-local flag and updates the button/input
-  // in place. Sticky across adds, matching noteAddMode's per-parent behavior.
-  let addIsNote = false;
+  // per-item mode toggle there's no re-render to lose typed text to —
+  // cycling just updates a closure-local mode and the button/input in
+  // place. Sticky across adds, matching subAddMode's per-parent behavior.
+  let addMode = "todo";
   const addNoteModeBtn = el("addNoteModeBtn");
   const addInput = el("addInput");
   addNoteModeBtn.onclick = () => {
-    addIsNote = !addIsNote;
-    addNoteModeBtn.classList.toggle("active", addIsNote);
-    addInput.placeholder = addIsNote ? "Add a note..." : "Add an item...";
+    addMode = nextAddMode(addMode);
+    styleAddModeBtn(addNoteModeBtn, addMode);
+    addInput.placeholder = addModePlaceholder(addMode, false);
   };
 
   const submitAdd = () => {
-    addTodo(addInput.value, addIsNote);
+    addTodo(addInput.value, addMode);
     addInput.value = "";
   };
   // Enter used to implicitly submit this form back when it held a single
@@ -2376,7 +2568,7 @@ function wireEvents() {
     const lines = raw.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
     if (lines.length < 2) return;
     e.preventDefault();
-    bulkAdd(lines, addIsNote);
+    bulkAdd(lines, addMode);
   });
   el("addForm").onsubmit = (e) => {
     e.preventDefault();
@@ -2464,7 +2656,7 @@ function wireEvents() {
     el("settingsPanel").classList.remove("open");
     el("importText").value = "";
     if (targetId) await switchBoard(targetId);
-    bulkAdd(lines, false);
+    bulkAdd(lines, "todo");
   };
 
   el("disconnectBtn").onclick = () => {
