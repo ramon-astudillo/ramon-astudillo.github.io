@@ -298,19 +298,51 @@
     color: white; border-radius: 12px; padding: 4px 10px; font-size: 0.8rem; cursor: pointer;
   }
 
-  .settings-panel, .action-panel {
+  .settings-panel {
     position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: none;
     align-items: flex-end; justify-content: center; z-index: 100;
   }
-  .settings-panel.open, .action-panel.open { display: flex; }
-  .settings-sheet, .action-sheet {
+  .settings-panel.open { display: flex; }
+  .settings-sheet {
     background: var(--card); width: 100%; max-width: 560px; border-radius: 16px 16px 0 0;
     padding: 20px; padding-bottom: calc(20px + env(safe-area-inset-bottom));
   }
   .settings-sheet h2 { margin: 0 0 12px; font-size: 1.05rem; }
-  /* The action menu: the item's own text as the title, then one full-width
-     row per option, in the same idiom as the Lists rows in Settings. */
-  .action-sheet h2 { margin: 0 0 6px; font-size: 1rem; word-break: break-word; }
+  /* The long-press edit page: full screen over the list, a sticky header
+     with back and Save, then the fields and actions as cards. */
+  .edit-page {
+    position: fixed; inset: 0; z-index: 100; display: none;
+    background: var(--bg); overflow-y: auto; overscroll-behavior: contain;
+  }
+  .edit-page.open { display: block; }
+  .edit-header {
+    position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 8px;
+    padding: 10px 16px; padding-top: calc(10px + env(safe-area-inset-top));
+    background: var(--card); border-bottom: 1px solid var(--border);
+  }
+  .edit-header h2 { flex: 1; margin: 0; font-size: 1.05rem; }
+  .edit-back {
+    background: none; border: none; color: var(--accent); font-size: 1.3rem;
+    padding: 4px 8px 4px 0; cursor: pointer;
+  }
+  .edit-body {
+    max-width: 560px; margin: 0 auto;
+    padding: 4px 16px calc(24px + env(safe-area-inset-bottom));
+  }
+  .edit-section {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 2px 14px 12px; margin-top: 12px;
+  }
+  .edit-section .field-label { display: block; font-size: 0.8rem; color: var(--muted); margin: 12px 0 6px; }
+  .edit-section input[type=text] { padding: 10px; border-radius: 8px; }
+  .edit-section .action-btn-row { margin-top: 10px; flex-wrap: wrap; }
+  .edit-toggle {
+    display: flex; justify-content: space-between; align-items: center;
+    border-bottom: 1px solid var(--border);
+  }
+  .edit-toggle:last-child { border-bottom: none; }
+  .edit-toggle .field-label { flex: 1; margin: 0; padding: 12px 0; font-size: 0.95rem; color: var(--text); cursor: pointer; }
+  .edit-toggle input[type=checkbox] { width: 20px; height: 20px; margin: 0; }
   .action-list { display: flex; flex-direction: column; }
   .action-item {
     background: none; border: none; border-bottom: 1px solid var(--border);
@@ -319,8 +351,6 @@
   .action-item:last-child { border-bottom: none; }
   .action-item:active { background: var(--bg); }
   .action-item.danger { color: var(--danger); }
-  .action-form { display: flex; flex-direction: column; gap: 10px; padding: 6px 0; }
-  .action-form input[type=text] { width: 100%; padding: 10px; font-size: 1rem; border-radius: 8px; }
   .action-date-row { display: flex; gap: 8px; }
   .action-date-row input {
     flex: 1; min-width: 0; padding: 10px; font-size: 1rem; border-radius: 8px;
@@ -453,11 +483,9 @@
 
   <div class="toast" id="toast"></div>
 
-  <!-- The long-press action menu. Filled by openActionMenu() in app.js, and
+  <!-- The long-press edit page. Filled by openEditPage() in app.js, and
        kept out of #todoList so a sync's re-render never rebuilds it. -->
-  <div class="action-panel" id="actionPanel">
-    <div class="action-sheet" id="actionSheet"></div>
-  </div>
+  <div class="edit-page" id="editPage"></div>
 
   <div class="settings-panel" id="settingsPanel">
     <div class="settings-sheet">
