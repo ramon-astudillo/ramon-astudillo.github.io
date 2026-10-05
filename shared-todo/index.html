@@ -347,10 +347,15 @@
      loads; then filled with the image's own edge colour (see edgeColour). */
   .splash {
     position: fixed; inset: 0; z-index: 300; background: var(--bg); display: none;
-    transition: background-color 0.15s;
+    transition: background-color 0.15s, opacity 0.2s;
     align-items: center; justify-content: center; cursor: pointer;
   }
   .splash.open { display: flex; }
+  .splash.closing { opacity: 0; pointer-events: none; }
+  /* The built-in splash: the app icon on the manifest colour, so it carries
+     straight on from the Android system splash. */
+  .splash.app-icon { background: #f4f5f7; }
+  .splash.app-icon img { width: 96px; height: 96px; border-radius: 22px; }
   .splash img, .splash video { max-width: 100%; max-height: 100%; object-fit: contain; }
   .settings-sheet h2 { margin: 0 0 12px; font-size: 1.05rem; }
   /* The long-press edit page: full screen over the list, a sticky header
@@ -590,7 +595,9 @@
           <div class="row"><span>Remembered passphrase</span><button class="secondary" id="forgetKeyBtn">Forget on this device</button></div>
         </details>
         <h2 style="margin-top:16px;">Splash screen</h2>
-        <p class="splash-help">One is shown at random when the app opens, for a few seconds or until tapped. Stored encrypted in Dropbox and shared by every device on this passphrase.</p>
+        <div class="edit-toggle"><label class="field-label" for="splashChoiceDefault">App icon (quick)</label><input type="radio" name="splashChoice" id="splashChoiceDefault" value="default"></div>
+        <div class="edit-toggle"><label class="field-label" for="splashChoiceImages">My images, one at random</label><input type="radio" name="splashChoice" id="splashChoiceImages" value="images"></div>
+        <p class="splash-help">The choice is per device. Tap to skip either. Images are stored encrypted in Dropbox and shared by every device on this passphrase.</p>
         <div class="splash-grid" id="splashGrid"></div>
         <p class="splash-help" id="splashEmpty">No images yet — the app opens straight to the list.</p>
         <button class="secondary" type="button" id="splashAddBtn">Add images or GIFs…</button>

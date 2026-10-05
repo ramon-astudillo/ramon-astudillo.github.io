@@ -2886,6 +2886,9 @@ function wireEvents() {
 
   el("forceUpdateBtn").onclick = () => forceUpdate();
 
+  for (const radio of document.querySelectorAll("input[name=splashChoice]")) {
+    radio.onchange = () => localStorage.setItem(LS_SPLASH_CHOICE, radio.value);
+  }
   el("splashAddBtn").onclick = () => el("splashFileInput").click();
   el("splashFileInput").onchange = (e) => {
     addSplashImages(e.target.files);
@@ -2969,9 +2972,10 @@ async function forceUpdate() {
 // --- Splash screen ---------------------------------------------------
 //
 // On every open one image (or GIF, or short video) is picked at random from
-// the set added in Settings and shown full screen for SPLASH_MS, or until
-// tapped. The set is shared by every device on the passphrase: on Dropbox
-// each file is `/splash/<id>.bin`, encrypted with the list key (see
+// the set added in Settings and shown full screen for SPLASH_IMAGE_MS, or
+// until tapped — or, if this device chose it, just the app icon, briefly.
+// The set is shared by every device on the passphrase: on Dropbox each
+// file is `/splash/<id>.bin`, encrypted with the list key (see
 // encryptBytes), and an encrypted index lists them. Each device keeps the
 // files decrypted in IndexedDB — localStorage holds only a few MB of
 // strings — and the index in localStorage, so the splash never waits on
@@ -2981,7 +2985,10 @@ async function forceUpdate() {
 
 const SPLASH_INDEX_PATH = "/splash/index.json";
 const LS_SPLASH_INDEX = "shared_todo_splash_index";
-const SPLASH_MS = 3000;
+const LS_SPLASH_CHOICE = "shared_todo_splash_choice";
+const SPLASH_IMAGE_MS = 1500;
+const SPLASH_DEFAULT_MS = 400;
+const SPLASH_FADE_MS = 200;
 const SPLASH_MAX_BYTES = 25 * 1024 * 1024;
 
 function emptySplashIndex() {
@@ -3106,38 +3113,58 @@ function edgeColour(media) {
   return "rgb(" + Math.round(r / n) + "," + Math.round(g / n) + "," + Math.round(b / n) + ")";
 }
 
+// Which splash this device shows: "default" (the app icon) or "images" (one
+// of the shared set at random). Per device, and unset means "images", which
+// is nothing at all until an image is added.
+function splashChoice() {
+  return localStorage.getItem(LS_SPLASH_CHOICE) || "images";
+}
+
 // The overlay goes up synchronously, before the index or the file is read,
 // so the list (drawn from cache within milliseconds of load) never flashes
 // before it; it comes straight down again if there turns out to be nothing
-// to show on this device.
+// to show on this device. The timer runs from that moment, not from when
+// the image appears, so reading and decoding eat into it rather than add to
+// it. It fades out, and a tap ends it at once.
 async function showSplash() {
+  const choice = splashChoice();
   const index = loadSplashIndex();
-  if (index.images.length === 0) return;
+  if (choice === "images" && index.images.length === 0) return;
   const overlay = el("splash");
   overlay.classList.add("open");
   let url = null;
-  let timer = null;
   const close = () => {
     clearTimeout(timer);
-    overlay.classList.remove("open");
-    overlay.style.background = "";
-    overlay.innerHTML = "";
-    if (url) URL.revokeObjectURL(url);
+    overlay.classList.add("closing");
+    setTimeout(() => {
+      overlay.classList.remove("open", "closing", "app-icon");
+      overlay.style.background = "";
+      overlay.innerHTML = "";
+      if (url) URL.revokeObjectURL(url);
+    }, SPLASH_FADE_MS);
   };
+  const timer = setTimeout(close, choice === "default" ? SPLASH_DEFAULT_MS : SPLASH_IMAGE_MS);
   overlay.onclick = close;
+  if (choice === "default") {
+    overlay.classList.add("app-icon");
+    const img = document.createElement("img");
+    img.src = "icon-192.png";
+    img.alt = "";
+    overlay.appendChild(img);
+    return;
+  }
   const have = new Set(await SplashStore.keys());
   const candidates = index.images.filter((i) => have.has(i.id));
   if (candidates.length === 0) return close();
   const pick = candidates[Math.floor(Math.random() * candidates.length)];
   const record = await SplashStore.get(pick.id);
-  if (!record || !overlay.classList.contains("open")) return close();
+  if (!record || overlay.classList.contains("closing")) return close();
   url = URL.createObjectURL(record.blob);
   const media = splashMediaElement(pick.type, url);
   const fill = () => { overlay.style.background = edgeColour(media); };
   if (media.tagName === "VIDEO") media.addEventListener("loadeddata", fill, { once: true });
   else media.addEventListener("load", fill, { once: true });
   overlay.appendChild(media);
-  timer = setTimeout(close, SPLASH_MS);
 }
 
 // Settings: one thumbnail per image with a ✕, and an add button taking
@@ -3153,6 +3180,9 @@ async function renderSplashSettings() {
   grid.innerHTML = "";
   for (const url of splashThumbUrls) URL.revokeObjectURL(url);
   splashThumbUrls = [];
+  for (const radio of document.querySelectorAll("input[name=splashChoice]")) {
+    radio.checked = radio.value === splashChoice();
+  }
   const index = loadSplashIndex();
   el("splashEmpty").hidden = index.images.length > 0;
   for (const image of index.images) {
