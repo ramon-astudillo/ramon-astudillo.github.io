@@ -15,6 +15,19 @@ clips:
   after: And to get there, they'd have four compute dyes, 16 stacks of HBM4e, and then each stack of HBM4e
     dyes has 32GB or 4GB of DRAM capacity. And then they'd make it 16-HI, so that's how you get to 1TB.
     But now, what we understand is that you're fast-forward.
+- t: 883
+  start: 883.0
+  end: 917.0
+  time: '14:43'
+  title: 'Ep. 030 - Long Live the Short King: Why 4-HI HBM Wins (Memory) | Myron Xie, Jordan Nanos'
+  note: ''
+  before: This in great detail sourced from a lot of work from the data center model that the guys have
+    tracking sites,
+  quote: it's pretty clear to tell if a given site is targeted for pre-training or not [...] if you're
+    going to have more than 100,000 GPUs in an individual building [...] that's a very different data
+    center design compared to, you know, 2,000, 4,000, 8,000 GPUs spread across four data halls
+  after: you know, it's clear that as the labs bring on more compute in a capacity-constrained world right
+    now, that they are...
 - t: 1094
   start: 1092
   time: '18:14'
