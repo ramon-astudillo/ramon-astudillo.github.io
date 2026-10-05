@@ -3075,6 +3075,37 @@ function splashMediaElement(type, url) {
   return img;
 }
 
+// The background colour around an image or video frame, as a CSS colour —
+// what the overlay is filled with, so an image that doesn't share the
+// screen's shape sits on its own background (a white-backed drawing on
+// white) instead of in a black box. It is the most common colour on the
+// outermost ring of pixels, grouped into near-identical shades, rather than
+// their average: a subject touching one edge (a wheel cut off at the top)
+// would drag an average off the real background. The object URL is this
+// page's own, so reading the canvas back is allowed.
+function edgeColour(media) {
+  const size = 48;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  ctx.drawImage(media, 0, 0, size, size);
+  const data = ctx.getImageData(0, 0, size, size).data;
+  const groups = new Map(); // shade key -> [count, r, g, b]
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      if (x !== 0 && y !== 0 && x !== size - 1 && y !== size - 1) continue;
+      const i = (y * size + x) * 4;
+      const key = (data[i] >> 4) + "," + (data[i + 1] >> 4) + "," + (data[i + 2] >> 4);
+      const group = groups.get(key) || [0, 0, 0, 0];
+      group[0]++; group[1] += data[i]; group[2] += data[i + 1]; group[3] += data[i + 2];
+      groups.set(key, group);
+    }
+  }
+  const [n, r, g, b] = [...groups.values()].reduce((best, grp) => (grp[0] > best[0] ? grp : best));
+  return "rgb(" + Math.round(r / n) + "," + Math.round(g / n) + "," + Math.round(b / n) + ")";
+}
+
 // The overlay goes up synchronously, before the index or the file is read,
 // so the list (drawn from cache within milliseconds of load) never flashes
 // before it; it comes straight down again if there turns out to be nothing
@@ -3089,6 +3120,7 @@ async function showSplash() {
   const close = () => {
     clearTimeout(timer);
     overlay.classList.remove("open");
+    overlay.style.background = "";
     overlay.innerHTML = "";
     if (url) URL.revokeObjectURL(url);
   };
@@ -3100,7 +3132,11 @@ async function showSplash() {
   const record = await SplashStore.get(pick.id);
   if (!record || !overlay.classList.contains("open")) return close();
   url = URL.createObjectURL(record.blob);
-  overlay.appendChild(splashMediaElement(pick.type, url));
+  const media = splashMediaElement(pick.type, url);
+  const fill = () => { overlay.style.background = edgeColour(media); };
+  if (media.tagName === "VIDEO") media.addEventListener("loadeddata", fill, { once: true });
+  else media.addEventListener("load", fill, { once: true });
+  overlay.appendChild(media);
   timer = setTimeout(close, SPLASH_MS);
 }
 

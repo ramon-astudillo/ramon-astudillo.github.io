@@ -343,9 +343,11 @@
     position: absolute; top: 3px; right: 3px; width: 24px; height: 24px; border-radius: 50%;
     border: none; background: rgba(0,0,0,0.55); color: white; font-size: 0.75rem; cursor: pointer; padding: 0;
   }
-  /* Above everything, the edit page included. */
+  /* Above everything, the edit page included. The page colour only until the image
+     loads; then filled with the image's own edge colour (see edgeColour). */
   .splash {
-    position: fixed; inset: 0; z-index: 300; background: #000; display: none;
+    position: fixed; inset: 0; z-index: 300; background: var(--bg); display: none;
+    transition: background-color 0.15s;
     align-items: center; justify-content: center; cursor: pointer;
   }
   .splash.open { display: flex; }
