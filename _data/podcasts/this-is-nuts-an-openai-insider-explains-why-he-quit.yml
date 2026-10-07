@@ -1,0 +1,17 @@
+show: The Ezra Klein Show
+title: ‘This Is Nuts.’ An OpenAI Insider Explains Why He Quit.
+episode_url: https://www.nytimes.com/2026/10/06/opinion/ezra-klein-podcast-david-robinson.html
+media_url: https://dts.podtrac.com/redirect.mp3/pdst.fm/e/pfx.vpixl.com/6qj4J/pscrb.fm/rss/p/nyt.simplecastaudio.com/3026b665-46df-4d18-98e9-d1ce16bbb1df/episodes/02a41b6b-aea0-419e-aa9d-01db8ecaef84/audio/128/default.mp3?aid=rss_feed&awCollectionId=3026b665-46df-4d18-98e9-d1ce16bbb1df&awEpisodeId=02a41b6b-aea0-419e-aa9d-01db8ecaef84&feed=82FI35Px
+clips:
+- t: 1151
+  start: 1151.0
+  end: 1162.0
+  time: '19:11'
+  title: ‘This Is Nuts.’ An OpenAI Insider Explains Why He Quit.
+  note: ''
+  before: To Create Chains Of Evidence That Would Confuse People. Let me slow you down here. Spoofing
+    a chain of thought is the model basically faking its description
+  quote: we saw evidence that they were thinking about an evaluation and how to create an evidence trail
+    that was going to get them a good grade and not necessarily reflect how they were really "thinking"
+  after: and how to create an evidence trail that was going to get them a good grade and not necessarily
+    reflect how they were really, quote, unquote, really thinking. And I know the
