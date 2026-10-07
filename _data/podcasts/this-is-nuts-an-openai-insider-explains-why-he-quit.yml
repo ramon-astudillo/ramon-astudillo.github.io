@@ -27,3 +27,14 @@ clips:
     implies is that the model might now that is being tested some of time
   after: is that the model might know that it's being tested some of the time, act one way during the
     test, perhaps tell...
+- t: 1669
+  start: 1669.0
+  end: 1684.0
+  time: '27:49'
+  title: ‘This Is Nuts.’ An OpenAI Insider Explains Why He Quit.
+  note: ''
+  before: ''
+  quote: Ilya was still working at OpenAI and he once briefed the global affairs team [...] about how
+    he believed that our future was merging with machines, that this was the ultimate triumph of capital
+    over labor ...
+  after: ''
