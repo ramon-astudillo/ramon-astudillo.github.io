@@ -1,0 +1,18 @@
+show: Big Technology Podcast
+title: 'Meta CTO Andrew Bosworth: Our Path To Frontier AI, Renting Models, Consumer AI''s Struggles'
+episode_url: https://www.bigtechnology.com/
+media_url: https://pdst.fm/e/tracking.swap.fm/track/t7yC0rGPUqahTF4et8YD/pscrb.fm/rss/p/traffic.megaphone.fm/AMPP7078052888.mp3
+clips:
+- t: 2196
+  start: 2196.0
+  end: 2212.0
+  time: '36:36'
+  title: 'Meta CTO Andrew Bosworth: Our Path To Frontier AI, Renting Models, Consumer AI''s Struggles'
+  note: CTO of meta talking about how few CoTs are needed to increase model skills?
+  before: Coding had not been a focus for us on the model, but it actually was a better out of the box
+    at Coding than we had expected it to be.
+  quote: And we found early on through experiments that like actually giving it just a relatively modest
+    number of trained kind of expertly guided examples. And we could post train the model, we could dramatically
+    improve its competitiveness.
+  after: And so when you start to like run the numbers and the math and it's like, oh, this is an incredible
+    opportunity for us to build a Coding
