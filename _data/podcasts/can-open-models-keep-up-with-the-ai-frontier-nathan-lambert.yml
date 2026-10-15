@@ -14,3 +14,17 @@ clips:
   quote: The Chinese labs are very technically excellent [...] what they don't have is compute. [...]
     an average OpenAI researcher has 5000 H100 equivalents that they can access at any time
   after: ''
+- t: 671
+  start: 671.4
+  end: 686.7
+  time: '11:11'
+  title: Can Open Models Keep Up With the AI Frontier? | Nathan Lambert
+  note: ''
+  before: post training, which is you get the completions and the score goes up to what is going on in
+    reasoning today. And based on the public literature,
+  quote: it's very hard for me to be like distillation is a major factor [in chinese model superiority]
+    because, for example, in the fully open literature of people trying to do open post training recipes,
+    all the open model builders are stuck using like a really outdated quen model. Because you can't figure
+    out how to get the teacher right.
+  after: My hypothesis is that there's some like mid-training and something in the common pre-training
+    data that's open that makes it hard to do this thing, which is get
