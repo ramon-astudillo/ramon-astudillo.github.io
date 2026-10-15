@@ -8,7 +8,7 @@ clips:
   end: 2212.0
   time: '36:36'
   title: 'Meta CTO Andrew Bosworth: Our Path To Frontier AI, Renting Models, Consumer AI''s Struggles'
-  note: CTO of meta talking about how few CoTs are needed to increase model skills?
+  note: This does sound like you can post train with distillation and it works
   before: Coding had not been a focus for us on the model, but it actually was a better out of the box
     at Coding than we had expected it to be.
   quote: And we found early on through experiments that like actually giving it just a relatively modest
