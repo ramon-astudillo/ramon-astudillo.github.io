@@ -28,3 +28,12 @@ clips:
     out how to get the teacher right.
   after: My hypothesis is that there's some like mid-training and something in the common pre-training
     data that's open that makes it hard to do this thing, which is get
+- t: 1115
+  start: 1115.0
+  end: 1135.0
+  time: '18:35'
+  title: Can Open Models Keep Up With the AI Frontier? | Nathan Lambert
+  note: ''
+  before: ''
+  quote: ''
+  after: ''
