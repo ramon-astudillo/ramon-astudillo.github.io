@@ -28,3 +28,15 @@ clips:
     out how to get the teacher right.
   after: My hypothesis is that there's some like mid-training and something in the common pre-training
     data that's open that makes it hard to do this thing, which is get
+- t: 3013
+  start: 3013.0
+  end: 3027.7
+  time: '50:13'
+  title: Can Open Models Keep Up With the AI Frontier? | Nathan Lambert
+  note: 'Quote is a but garbled, but I am surprised this is taken as an established truth. '
+  before: related to the whole post-training side maybe pulling away from closed and open is the fact
+    that the agents,
+  quote: '[Lisha Li] the type of harnesses that are being used in the closed labs are very different and
+    slash [their LLMs are] actually trained and post-trained on to be specifically good for those harnesses.'
+  after: so that increases the mystique even more, makes it very hard. How do you, I guess, one, do you
+    agree? And then two, how are you
