@@ -28,6 +28,19 @@ clips:
     out how to get the teacher right.
   after: My hypothesis is that there's some like mid-training and something in the common pre-training
     data that's open that makes it hard to do this thing, which is get
+- t: 1531
+  start: 1531.7
+  end: 1545.6
+  time: '25:31'
+  title: Can Open Models Keep Up With the AI Frontier? | Nathan Lambert
+  note: 'High quality data fuels progress in non verifiable domains '
+  before: that is high quality and giving the models worlds to act in and he'll climb on. And I think
+    there's two things.
+  quote: We have the math and code thing and we don't know how big the coding market will be. And then
+    there's kind of everything else, which is still they're targeting this knowledge work [buying daya
+    for], this biology, healthcare, legal. And all of these things are not as verifiable.
+  after: And I think it is much closer to the story of opening. I bought a lot of robotics data. They're
+    probably going to tell us it's generalization, magic poof. People love poof
 - t: 3013
   start: 3013.0
   end: 3027.7
