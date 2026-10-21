@@ -1,0 +1,18 @@
+{%- comment -%}Podcasts grouped by show, each with its episodes. include.current: an
+episode key to leave out (the clip page lists that one's notes separately).{%- endcomment -%}
+{%- assign episodes = site.data.podcasts | sort -%}
+{%- capture shows -%}{%- for pair in episodes -%}{{ pair[1].show }}|{%- endfor -%}{%- endcapture -%}
+{%- assign shows = shows | split: "|" | uniq | sort -%}
+{%- for show in shows -%}
+  {%- assign listed = 0 -%}
+  {%- capture items -%}
+  {%- for pair in episodes -%}{%- if pair[1].show == show and pair[0] != include.current -%}{%- assign listed = listed | plus: 1 %}
+    <li><a href="{{ '/notes/audio/' | append: pair[0] | relative_url }}">{{ pair[1].title }}</a> <span class="count">{{ pair[1].clips | size }}</span></li>
+  {%- endif -%}{%- endfor -%}
+  {%- endcapture -%}
+  {%- if listed > 0 %}
+  <h3 class="show">{{ show }}</h3>
+  <ul class="episodes">{{ items }}
+  </ul>
+  {%- endif -%}
+{%- endfor -%}

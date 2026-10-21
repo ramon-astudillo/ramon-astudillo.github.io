@@ -17,8 +17,41 @@
   <meta name="twitter:image" content="{{ card }}">{% endif %}
   <link rel="icon" type="image/png" href="{{ '/menger.png' | relative_url }}">
   {% include podcast-style.html %}
+  <style>
+    /* Wide screens: this episode's notes | the note | other episodes. Narrow: stacked, note first. */
+    .layout { display: grid; grid-template-columns: 13rem minmax(0, 42rem) 15rem; gap: 2.5rem;
+              justify-content: center; padding: 2.5rem 16px 4rem; }
+    .layout main { max-width: none; margin: 0; padding: 0; grid-column: 2; grid-row: 1; }
+    aside { font: 0.85rem/1.4 system-ui, sans-serif; color: var(--muted); }
+    aside h2 { font: 700 0.75rem system-ui, sans-serif; text-transform: uppercase; letter-spacing: 0.06em;
+               color: var(--muted); margin: 0 0 0.75rem; }
+    aside a { color: var(--ink); text-decoration: none; }
+    aside a:hover { text-decoration: underline; }
+    .siblings { grid-column: 1; grid-row: 1; }
+    .sibling { display: block; margin-bottom: 1rem; }
+    .sibling img { display: block; width: 100%; aspect-ratio: 1200 / 630; object-fit: cover;
+                   border: 1px solid var(--line); border-radius: 4px; }
+    .sibling .noimg { display: block; aspect-ratio: 1200 / 630; border: 1px solid var(--line); border-radius: 4px;
+                      padding: 0.5rem; box-sizing: border-box; overflow: hidden; font-style: italic; }
+    .sibling .when { display: block; margin-top: 0.3rem; font-weight: 700; }
+    .sibling .what { display: block; color: var(--muted); }
+    .sibling.current img, .sibling.current .noimg { outline: 2px solid var(--ink); outline-offset: 1px; }
+    .others { grid-column: 3; grid-row: 1; }
+    .others .show { font: 600 0.8rem system-ui, sans-serif; color: var(--muted); margin: 1rem 0 0.35rem; }
+    .others .show:first-of-type { margin-top: 0; }
+    .others ul { list-style: none; margin: 0; padding: 0; }
+    .others li { margin-bottom: 0.5rem; }
+    .others .count { color: var(--muted); white-space: nowrap; }
+    .others .count::before { content: "· "; }
+    @media (max-width: 68rem) {
+      .layout { grid-template-columns: minmax(0, 1fr); max-width: 42rem; margin: 0 auto; gap: 2rem; }
+      .layout main, .siblings, .others { grid-column: 1; grid-row: auto; }
+      .siblings .list { display: grid; grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); gap: 0 1rem; }
+    }
+  </style>
 </head>
 <body>
+<div class="layout">
 <main>
   <div class="meta">{{ ep.show }} · <a href="{{ ep.episode_url }}">episode page</a></div>
   <h1>{{ clip.title | default: ep.title }}</h1>{% if clip.title and clip.title != ep.title %}
@@ -26,8 +59,25 @@
   <audio controls preload="metadata" src="{{ ep.media_url }}#t={{ clip.start | default: clip.t }}"></audio>
   {% if clip.quote %}<p class="transcript">{% if clip.before != "" %}…{{ clip.before }} {% endif %}<mark>{{ clip.quote }}</mark>{% if clip.after != "" %} {{ clip.after }}…{% endif %}</p>{% endif %}
   {% if clip.note and clip.note != "" %}<p class="note">{{ clip.note }}</p>{% endif %}
-  <footer>▶ {{ clip.time }} · <a href="{{ '/notes/audio/' | append: page.podcast | relative_url }}">all notes on this episode</a> · <a href="{{ '/' | relative_url }}">Ramón Astudillo</a></footer>
+  <footer>▶ {{ clip.time }} · <a href="{{ '/notes/audio/' | append: page.podcast | relative_url }}">all notes on this episode</a> · <a href="{{ '/notes/audio/' | relative_url }}">all podcasts</a> · <a href="{{ '/' | relative_url }}">Ramón Astudillo</a></footer>
 </main>
+<aside class="siblings">
+  <h2>This episode</h2>
+  <div class="list">
+  {% for c in ep.clips %}{% capture what %}{% if c.note and c.note != "" %}{{ c.note }}{% else %}{{ c.quote }}{% endif %}{% endcapture %}
+  <a class="sibling{% if c.t == clip.t %} current{% endif %}" href="{{ '/notes/audio/' | append: page.podcast | append: '/' | append: c.t | relative_url }}">
+    {% if c.quote %}<img src="{{ '/notes/audio/' | append: page.podcast | append: '/' | append: c.t | append: '.png' | relative_url }}" alt="" loading="lazy">{% else %}<span class="noimg">{{ what | truncatewords: 12 }}</span>{% endif %}
+    <span class="when">▶ {{ c.time }}</span>
+    {% if c.quote %}<span class="what">{{ what | strip | truncatewords: 10 }}</span>{% endif %}
+  </a>
+  {% endfor %}
+  </div>
+</aside>
+<aside class="others">
+  <h2>Other episodes</h2>
+  {% include podcast-list.html current=page.podcast %}
+</aside>
+</div>
 <script>
   // Re-seek once playing in case the browser ignored the #t= offset.
   const audio = document.querySelector('audio'), t = {{ clip.start | default: clip.t }};
