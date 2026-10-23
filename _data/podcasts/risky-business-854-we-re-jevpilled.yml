@@ -8,7 +8,7 @@ clips:
   end: 578.2
   time: '9:16'
   title: 'Risky Business #854 -- We''re Jevpilled'
-  note: ''
+  note: This does seem like really sloppy security on OpenAI's part (and they also sued the bounty hunters).
   before: the thought process was, but they then decided, well, let's see if we can go a little bit further.
     And what they then determined was that
   quote: the tokens they'd exfiltrated from the discourse forum didn't just work to authenticate users
