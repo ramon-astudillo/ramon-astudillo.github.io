@@ -1,0 +1,19 @@
+show: Risky Business
+title: 'Risky Business #854 -- We''re Jevpilled'
+episode_url: https://risky.biz/RB854/
+media_url: https://dts.podtrac.com/redirect.mp3/media3.risky.biz/RB854.mp3
+clips:
+- t: 556
+  start: 556.4
+  end: 578.2
+  time: '9:16'
+  title: 'Risky Business #854 -- We''re Jevpilled'
+  note: ''
+  before: the thought process was, but they then decided, well, let's see if we can go a little bit further.
+    And what they then determined was that
+  quote: the tokens they'd exfiltrated from the discourse forum didn't just work to authenticate users
+    onto the forum, but the exact same tokens could be used to sign in to chat GPT. Not only that, but
+    you could also access all of the OAuth grants and other services that you'd integrated with your chat
+    GPT or codex accounts.
+  after: So, you know, everyone connects their GitHub to their codex account, because that's how you do
+    the coding. And so, you know, through an amazing, literally zero effort pivot,
