@@ -4,11 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ page.title }}</title>
-  <meta name="description" content="{{ page.comment | normalize_whitespace | escape }}">
   <meta property="og:type" content="article">
   <meta property="og:site_name" content="Notes · Ramón Astudillo">
   <meta property="og:title" content="{{ page.title | escape }}">
-  <meta property="og:description" content="{{ page.comment | normalize_whitespace | escape }}">
   <meta property="og:url" content="{{ page.url | absolute_url }}">
   {% if page.image and page.image != "" %}<meta property="og:image" content="{{ page.image | escape }}">
   <meta name="twitter:card" content="summary_large_image">
