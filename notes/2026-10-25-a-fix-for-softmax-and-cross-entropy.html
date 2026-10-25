@@ -1,0 +1,12 @@
+---
+layout: note
+title: A Fix for Softmax and Cross-Entropy
+comment: 'Standard implementations of softmax, log-softmax, and cross-entropy have
+  two numerical bugs. One rounds the target logit''s gradient to zero under some conditions.
+  The second produces non-zero gradients even when the student and teacher logits
+  are equal. '
+link: https://arxiv.org/abs/2610.31642
+image: https://arxiv.org/static/browse/0.3.4/images/arxiv-logo-fb.png
+site_name: arXiv.org
+date: '2026-10-25T20:23:19+00:00'
+---
