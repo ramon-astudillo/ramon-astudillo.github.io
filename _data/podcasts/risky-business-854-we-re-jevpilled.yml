@@ -17,3 +17,16 @@ clips:
     GPT or codex accounts.
   after: So, you know, everyone connects their GitHub to their codex account, because that's how you do
     the coding. And so, you know, through an amazing, literally zero effort pivot,
+- t: 1671
+  start: 1671.1
+  end: 1680.2
+  time: '27:51'
+  title: 'Risky Business #854 -- We''re Jevpilled'
+  note: The black cyberplage may be a good name. Lots of software will have to evolve drastically or die.
+    The good thing is, we have the means for rapid evolution.
+  before: There's a real nasty WordPress O Day. And your initial comment on that was like, ah, yeah, you
+    know, WordPress bugs, whatever. But
+  quote: we stopped seeing bugs in WordPress core for ages. And now we've seen like two or three absolute
+    monsters over the last month [thanks to LLMs lowering hacking cost]
+  after: So I just sort of feel like, uh, you know, as janky as this stuff is, like, the amount of bandwidth
+    available for research,
