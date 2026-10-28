@@ -30,3 +30,16 @@ clips:
     monsters over the last month [thanks to LLMs lowering hacking cost]
   after: So I just sort of feel like, uh, you know, as janky as this stuff is, like, the amount of bandwidth
     available for research,
+- t: 2607
+  start: 2607.5
+  end: 2643.7
+  time: '43:27'
+  title: 'Risky Business #854 -- We''re Jevpilled'
+  note: This is hilarious. In a way, this is a softer version of canary tokens that detects dumb models
+    and also models that intend no harm and are just loose in the wrong place or have been tricked.
+  before: And one of our engineers, Max, said, hey, listen, I just
+  quote: put up a website that offers to help agents to see what happens, and all of them ask for help.
+    [...] suddenly, a web server pops up that says, hey, I help agents identify yourself. And it turns
+    out that 10 out of 10 [...] they interact with this web server,
+  after: and they then converse with it. And so then we started going like, well, okay, how much can we
+    ask this agent for to
