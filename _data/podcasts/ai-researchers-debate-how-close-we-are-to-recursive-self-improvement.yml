@@ -1,0 +1,19 @@
+show: Dwarkesh Podcast
+title: AI researchers debate how close we are to recursive self-improvement
+episode_url: https://www.dwarkesh.com/p/john-beren-charlie
+media_url: https://api.substack.com/feed/podcast/215199144/a0f47ff12d3d6420b3180f18adb9bfa3.mp3
+clips:
+- t: 1405
+  start: 1405.8
+  end: 1422.1
+  time: '23:25'
+  title: AI researchers debate how close we are to recursive self-improvement
+  note: ''
+  before: based off like this observation that the Chinese labs have this route of data. So like, I think
+    the thing that just did this originally was I was saying,
+  quote: isn't it weird how Sonnet 5 and Opus 5 are like almost objectively worse models than like GLM
+    5.3, Kimi K3, even though they've had access to like not only distillation but logic distillation
+    from like mythos. And so the counter here was that like, okay, the prompt distribution really, really
+    matters.
+  after: Like you need to see what users are doing so that you can just do like kind of these behaviors
+    and things in. I think the prediction from this is that the frontier
