@@ -17,3 +17,17 @@ clips:
     matters.
   after: Like you need to see what users are doing so that you can just do like kind of these behaviors
     and things in. I think the prediction from this is that the frontier
+- t: 1470
+  start: 1470.6
+  end: 1490.6
+  time: '24:30'
+  title: AI researchers debate how close we are to recursive self-improvement
+  note: ''
+  before: or the Frontier model. And since we heard that they can't incentivize them again, or like with
+    like a smaller model or something. Maybe like,
+  quote: maybe we're just in this weird like uncanny valley where [...] the student teacher gap [...]
+    is just like too large [...] the difference between Opus 4.6 and Opus 5, is that Opus 5 really feels
+    like it's got this like AI as a judge checking every possible thing it's done
+  after: And it's like, that's why it uses so many tokens, it like tries to think about all these things,
+    but it doesn't necessarily have the big model smell of Fable to know when to like stop doing that,
+    or
