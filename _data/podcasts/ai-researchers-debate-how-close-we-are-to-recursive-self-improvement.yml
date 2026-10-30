@@ -31,3 +31,18 @@ clips:
   after: And it's like, that's why it uses so many tokens, it like tries to think about all these things,
     but it doesn't necessarily have the big model smell of Fable to know when to like stop doing that,
     or
+- t: 2269
+  start: 2269.9
+  end: 2289.9
+  time: '37:49'
+  title: AI researchers debate how close we are to recursive self-improvement
+  note: ''
+  before: these intuitions into the weights. So the model would be more efficient at runtime. Yeah, I'd
+    say in practice,
+  quote: it does seem like model providers are going domain by domain and trying to strengthen the models
+    in the highest value domain. And I'd say that that's one of the answers to why the models have gotten
+    so much better. It's just because the model providers have covered a lot of the high value domains
+    and the most common types of skills.
+  after: mean, I think another thing is just that it's not that expensive to do both at the same time,
+    right? Because the models are massive. They can easily afford, in terms of their parameters, to learn
+    everything.
