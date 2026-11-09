@@ -10,7 +10,8 @@ clips:
   time: '18:59'
   title: 'Ep. 034 - Engrams: How DeepSeek Offloads KV Cache to DRAM and SSD (Core Research) | Jordan Nanos,
     Cam Quilici, Alec Ibarra, Bryan Shan'
-  note: ''
+  note: Semianalysis does paint a rosy picture of serving Kimi. They do preface this with "Until prices
+    return to sane values" (or something like that, not verbatim)
   before: right? Meaning, yeah, obviously, you don't have users fully saturating the system at all times
     and maybe you have like some nodes down or whatever.
   quote: '[about serving Kimi-K3 on a router] So, at 60% utilization, with 30% license fee that you have
