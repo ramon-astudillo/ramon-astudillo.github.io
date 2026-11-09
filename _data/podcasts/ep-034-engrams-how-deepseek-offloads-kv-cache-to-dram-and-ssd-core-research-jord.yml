@@ -1,0 +1,20 @@
+show: SemiAnalysis Weekly
+title: 'Ep. 034 - Engrams: How DeepSeek Offloads KV Cache to DRAM and SSD (Core Research) | Jordan Nanos,
+  Cam Quilici, Alec Ibarra, Bryan Shan'
+episode_url: https://podcasters.spotify.com/pod/show/jordan-nanos/episodes/Ep--034---Engrams-How-DeepSeek-Offloads-KV-Cache-to-DRAM-and-SSD-Core-Research--Jordan-Nanos--Cam-Quilici--Alec-Ibarra--Bryan-Shan-e3pp7av
+media_url: https://anchor.fm/s/10fbee758/podcast/play/126704415/https%3A%2F%2Fd3ctxlq1ktw2nl.cloudfront.net%2Fstaging%2F2026-9-2%2F433186293-44100-2-609a2686fa96a.mp3
+clips:
+- t: 1139
+  start: 1139.9
+  end: 1152.1
+  time: '18:59'
+  title: 'Ep. 034 - Engrams: How DeepSeek Offloads KV Cache to DRAM and SSD (Core Research) | Jordan Nanos,
+    Cam Quilici, Alec Ibarra, Bryan Shan'
+  note: ''
+  before: right? Meaning, yeah, obviously, you don't have users fully saturating the system at all times
+    and maybe you have like some nodes down or whatever.
+  quote: '[about serving GLM yourself] So, at 60% utilization, with 30% license fee that you have to give
+    to moonshot, you can literally make a almost 50% profit margin serving this on GB300.'
+  author: ''
+  after: It's just a money printer, right? So this is assuming like the cash hit rate that we get on Agent
+    X and then looking at open router data,
