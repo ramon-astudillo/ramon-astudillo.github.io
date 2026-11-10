@@ -3,6 +3,18 @@ title: Is There an A.I. Bubble? A Debate.
 episode_url: https://www.nytimes.com/2026/10/16/opinion/ezra-klein-podcast-azeem-azhar-paul-kedrosky.html
 media_url: https://dts.podtrac.com/redirect.mp3/pdst.fm/e/pfx.vpixl.com/6qj4J/pscrb.fm/rss/p/tracking.swap.fm/track/4jdbJYYRKqK96EGqOzQb/nyt.simplecastaudio.com/3026b665-46df-4d18-98e9-d1ce16bbb1df/episodes/282852b4-6a7c-4183-85a4-5bc0008801a5/audio/128/default.mp3?aid=rss_feed&awCollectionId=3026b665-46df-4d18-98e9-d1ce16bbb1df&awEpisodeId=282852b4-6a7c-4183-85a4-5bc0008801a5&feed=82FI35Px
 clips:
+- t: 750
+  start: 750.3
+  end: 770.3
+  time: '12:30'
+  title: Is There an A.I. Bubble? A Debate.
+  note: ''
+  before: asset turning into revenue with just enough of return on investment to pay itself.
+  quote: And right now, the reason we know we're in a compute-constrained environment is because people
+    are making extremely good returns in 18 to 24 months on an asset because they're able to charge essentially
+    Uber surge pricing for their GPUs. And about 50% of their revenues go to the two big A.I. companies,
+  author: Azeem Azhar
+  after: Anthropic and Open A.I. for their spending. The other 50% is a mix of other A.I. companies and
 - t: 2641
   start: 2641.0
   end: 2659.1
