@@ -26,17 +26,6 @@
           max-height: 350px;
         }
       }
-      .page-header::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: linear-gradient(120deg, #155799, #159957);
-        background: rgba(21, 87, 120, 0.3);
-        z-index: 1;
-      }
       .page-header > * {
         position: relative;
         z-index: 2;
@@ -124,6 +113,14 @@
       .page-header .project-tagline {
         color: white !important;
       }
+
+      /* A shadow rather than a tint over the whole photo, which washed out
+         its colours: the text stays readable and the photo stays as taken */
+      .page-header .project-name,
+      .page-header .project-tagline,
+      .page-header .photo-credit {
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6), 0 0 12px rgba(0, 0, 0, 0.35);
+      }
       
       /* Reduce header title size by 20% */
       .page-header .project-name {
@@ -154,9 +151,6 @@
         background-repeat: no-repeat;
         will-change: transform;
         z-index: 0;
-        image-rendering: -webkit-optimize-contrast;
-        image-rendering: crisp-edges;
-        image-rendering: optimize-contrast;
       }
       
       @media (min-width: 1200px) {
