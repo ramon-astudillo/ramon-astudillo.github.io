@@ -39,12 +39,9 @@
     .video { aspect-ratio: 16 / 9; margin: 1rem 0; }
     .video iframe { display: block; width: 100%; height: 100%; border: 0; }
     .others { grid-column: 3; grid-row: 1; }
-    .others .show { font: 600 0.8rem system-ui, sans-serif; color: var(--muted); margin: 1rem 0 0.35rem; }
-    .others .show:first-of-type { margin-top: 0; }
     .others ul { list-style: none; margin: 0; padding: 0; }
-    .others li { margin-bottom: 0.5rem; }
-    .others .count { color: var(--muted); white-space: nowrap; }
-    .others .count::before { content: "· "; }
+    .others li { margin-bottom: 0.6rem; }
+    .others .meta { display: block; font-size: 0.8rem; font-weight: normal; color: var(--muted); }
     @media (max-width: 68rem) {
       .layout { grid-template-columns: minmax(0, 1fr); max-width: 42rem; margin: 0 auto; gap: 2rem; }
       .layout main, .siblings, .others { grid-column: 1; grid-row: auto; }

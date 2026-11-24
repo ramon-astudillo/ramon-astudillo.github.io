@@ -94,26 +94,69 @@
         color: inherit;
       }
 
-      /* Links row (home) and back link (sub-pages) as pills */
-      .site-links {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-        margin-bottom: 1.5rem;
+      /* Profiles as white icons under the tagline */
+      .page-header .project-tagline {
+        margin-bottom: 1rem;
       }
 
-      .main-content .site-links a {
-        padding: 0.3rem 0.85rem;
-        border: 1px solid #c9d3e0;
-        border-radius: 999px;
-        font-size: 0.9rem;
+      .profiles {
+        display: flex;
+        justify-content: center;
+        gap: 1.1rem;
+      }
+
+      .profiles a {
+        display: block;
+        color: white;
+        opacity: 0.85;
+        filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6));
+        transition: opacity 0.15s, transform 0.15s;
+      }
+
+      .profiles a:hover,
+      .profiles a:focus-visible {
+        opacity: 1;
+        transform: translateY(-2px);
+      }
+
+      .profiles svg {
+        display: block;
+        width: 22px;
+        height: 22px;
+        fill: currentColor;
+      }
+
+      /* The site's pages as tabs at the top of the text column */
+      .site-tabs {
+        display: flex;
+        gap: 1.5rem;
+        border-bottom: 1px solid #dde3ea;
+        margin-bottom: 1.75rem;
+      }
+
+      .main-content .site-tabs a {
+        padding: 0.4rem 0 0.6rem;
+        margin-bottom: -1px;
+        border-bottom: 2px solid transparent;
+        color: #5d6673 !important;
+        font-weight: 600;
         text-decoration: none;
         white-space: nowrap;
       }
 
-      .main-content .site-links a:hover {
-        background: #eef2f8;
-        border-color: var(--twilight-blue);
+      .main-content .site-tabs a:hover {
+        color: var(--night-blue) !important;
+      }
+
+      .page-lead {
+        margin-top: -0.5rem;
+        color: #5d6673;
+        font-style: italic;
+      }
+
+      .main-content .site-tabs a[aria-current="page"] {
+        color: var(--night-blue) !important;
+        border-bottom-color: var(--night-blue);
       }
       
       /* Keep header titles white for readability over image */
@@ -208,13 +251,11 @@
 
     <header class="page-header" role="banner">
       <div class="parallax-bg"></div>
-      <h1 class="project-name">{{ page.title | default: site.title | default: site.github.repository_name }}</h1>
-      {% comment %}The site tagline breaks after the role in the banner only; title and previews keep it on one line{% endcomment %}
-      {% if page.description %}
-      <h2 class="project-tagline">{{ page.description }}</h2>
-      {% else %}
+      {% comment %}The same banner on every page; the tabs say which page this is.
+        The tagline breaks after the role here only; title and previews keep it on one line{% endcomment %}
+      <h1 class="project-name">{{ site.title }}</h1>
       <h2 class="project-tagline">{{ site.description | replace_first: " at ", "<br>" }}</h2>
-      {% endif %}
+      {% include profile-icons.html %}
       {% if site.show_downloads %}
         <a href="{{ site.github.zip_url }}" class="btn">Download .zip</a>
         <a href="{{ site.github.tar_url }}" class="btn">Download .tar.gz</a>
@@ -222,6 +263,8 @@
     </header>
 
     <main id="content" class="main-content" role="main">
+      {% include site-nav.html %}
+      {% if page.description %}<p class="page-lead">{{ page.description }}</p>{% endif %}
       {{ content }}
 
       <footer class="site-footer">

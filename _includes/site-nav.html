@@ -1,0 +1,6 @@
+{% comment %}The site's own pages as tabs under the banner; the current one underlined.{% endcomment %}
+<nav class="site-tabs" aria-label="Site">
+  <a href="{{ '/' | relative_url }}"{% if page.url == '/' %} aria-current="page"{% endif %}>Home</a>
+  <a href="{{ '/pages/talks' | relative_url }}"{% if page.url contains '/pages/talks' %} aria-current="page"{% endif %}>Talks</a>
+  <a href="{{ '/notes/audio/' | relative_url }}"{% if page.url contains '/notes/audio' %} aria-current="page"{% endif %}>Podcast notes</a>
+</nav>

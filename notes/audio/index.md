@@ -5,13 +5,10 @@ redirect_from:
 - /podcasts/
 ---
 
-<nav class="site-links"><a href="../../">← Home</a></nav>
-
 <style>
-  .show { margin: 1.5rem 0 0.25rem; }
-  .episodes { margin-top: 0; }
-  .count { color: #888; font-size: 0.85em; }
-  .count::after { content: " notes"; }
+  .episodes { list-style: none; padding: 0; margin-top: 0; }
+  .episodes li { margin-bottom: 1rem; }
+  .episodes .meta { display: block; color: #6a7380; font-size: 0.85em; }
 </style>
 
 {% include podcast-list.html %}

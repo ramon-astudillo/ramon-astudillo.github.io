@@ -1,18 +1,23 @@
-{%- comment -%}Podcasts grouped by show, each with its episodes. include.current: an
-episode key to leave out (the clip page lists that one's notes separately).{%- endcomment -%}
-{%- assign episodes = site.data.podcasts | sort -%}
-{%- capture shows -%}{%- for pair in episodes -%}{{ pair[1].show }}|{%- endfor -%}{%- endcapture -%}
-{%- assign shows = shows | split: "|" | uniq | sort -%}
-{%- for show in shows -%}
-  {%- assign listed = 0 -%}
-  {%- capture items -%}
-  {%- for pair in episodes -%}{%- if pair[1].show == show and pair[0] != include.current -%}{%- assign listed = listed | plus: 1 %}
-    <li><a href="{{ '/notes/audio/' | append: pair[0] | relative_url }}">{{ pair[1].title }}</a> <span class="count">{{ pair[1].clips | size }}</span></li>
-  {%- endif -%}{%- endfor -%}
-  {%- endcapture -%}
-  {%- if listed > 0 %}
-  <h3 class="show">{{ show }}</h3>
-  <ul class="episodes">{{ items }}
-  </ul>
-  {%- endif -%}
-{%- endfor -%}
+{%- comment -%}Podcast episodes, newest first. An episode's date is that of its latest
+published clip page. include.current: an episode key to leave out (the clip page
+lists that one's notes separately).{%- endcomment -%}
+{%- assign clip_pages = site.pages | where: "layout", "clip" -%}
+{%- capture rows -%}
+  {%- for pair in site.data.podcasts -%}
+    {%- if pair[0] != include.current -%}
+      {%- assign latest = clip_pages | where: "podcast", pair[0] | sort: "date" | last -%}
+      {{ latest.date | date: "%Y-%m-%d %H:%M:%S" }}#{{ pair[0] }}|
+    {%- endif -%}
+  {%- endfor -%}
+{%- endcapture -%}
+{%- assign rows = rows | split: "|" | sort | reverse -%}
+<ul class="episodes">
+{%- for row in rows -%}
+  {%- assign parts = row | split: "#" -%}
+  {%- assign key = parts[1] -%}
+  {%- assign ep = site.data.podcasts[key] -%}
+  {%- assign n = ep.clips | size %}
+  <li><a href="{{ '/notes/audio/' | append: key | relative_url }}">{{ ep.title }}</a>
+    <span class="meta">{% if parts[0] != "" %}<time datetime="{{ parts[0] | date: '%Y-%m-%d' }}">{{ parts[0] | date: "%-d %b %Y" }}</time> · {% endif %}{{ ep.show }} · {{ n }} {% if n == 1 %}note{% else %}notes{% endif %}</span></li>
+{%- endfor %}
+</ul>
