@@ -5,7 +5,7 @@ redirect_from:
 - /podcasts/
 ---
 
-[<a href="../../">Home</a>]
+<nav class="site-links"><a href="../../">← Home</a></nav>
 
 <style>
   .show { margin: 1.5rem 0 0.25rem; }
