@@ -1,0 +1,74 @@
+---
+layout: default
+title: AI Notes
+redirect_from:
+- /podcasts/
+- /notes/audio/
+---
+
+{% comment %}The RSS feed's entries as a page, newest first: title, date, comment and the
+Bluesky post. Notes on podcast clips link to /notes/audio/<episode>/<t>.html; the Audio
+filter keeps only those, and they show the clip's quote from _data/podcasts.{% endcomment %}
+{%- assign notes = site.pages | where: "layout", "note" | sort: "date" | reverse -%}
+<style>
+  .feed-bar { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem; }
+  .feed-bar button { font: 600 0.85rem system-ui, sans-serif; padding: 0.3rem 0.9rem; border-radius: 999px;
+    border: 1px solid #c9d1db; background: none; color: #5d6673; cursor: pointer; }
+  .feed-bar button[aria-pressed="true"] { background: var(--night-blue); border-color: var(--night-blue); color: white; }
+  .main-content .feed-bar .rss { margin-left: auto; font-size: 0.85rem; color: #5d6673 !important; }
+  .entries { list-style: none; padding: 0; margin: 0; }
+  .entries li { margin-bottom: 1.4rem; }
+  .entries .title { font-weight: 600; }
+  .entries .meta { display: block; color: #6a7380; font-size: 0.85em; }
+  .entries .comment, .entries blockquote { margin: 0.4rem 0 0; font-size: 0.95em; }
+  .entries blockquote { padding: 0 0 0 0.9rem; border-left: 3px solid #c9d1db; color: #5d6673; font-style: italic; }
+  .entries blockquote .who { display: block; font-style: normal; font-size: 0.9em; }
+  .entries blockquote .who::before { content: "— "; }
+  .entries.audio-only li:not(.audio) { display: none; }
+</style>
+
+<div class="feed-bar" role="group" aria-label="Filter">
+  <button type="button" data-filter="all" aria-pressed="true">All</button>
+  <button type="button" data-filter="audio" aria-pressed="false">Audio</button>
+  <a class="rss" href="{{ '/notes/ai_notes.xml' | relative_url }}">RSS feed</a>
+</div>
+
+<ul class="entries">
+{%- for note in notes %}
+  <li{% if note.link contains '/notes/audio/' %} class="audio"{% endif %}>
+    <a class="title" href="{{ note.url | relative_url }}">{{ note.title | escape }}</a>
+    <span class="meta"><time datetime="{{ note.date | date: '%Y-%m-%d' }}">{{ note.date | date: "%-d %b %Y" }}</time>{% if note.bsky and note.bsky != "" %} · <a href="{{ note.bsky | escape }}">Bluesky</a>{% endif %}</span>
+    {%- if note.link contains '/notes/audio/' -%}
+      {%- assign path = note.link | split: '/notes/audio/' | last | split: '/' -%}
+      {%- assign key = path[0] -%}
+      {%- assign t = path[1] | remove: '.html' -%}
+      {%- assign clip = site.data.podcasts[key].clips | where: "t", t | first -%}
+      {%- if clip.quote %}
+    <blockquote>{{ clip.quote | escape }}{% if clip.author and clip.author != "" %}<span class="who">{{ clip.author | escape }}</span>{% endif %}</blockquote>
+      {%- endif -%}
+    {%- endif -%}
+    {%- if note.comment and note.comment != "" %}
+    {% include note-comment.html text=note.comment %}
+    {%- endif %}
+  </li>
+{%- endfor %}
+</ul>
+
+<script>
+  /* #audio in the address keeps the filter, so links can point at it */
+  (function () {
+    var list = document.querySelector('.entries');
+    var buttons = document.querySelectorAll('.feed-bar button');
+    function show(filter) {
+      list.classList.toggle('audio-only', filter === 'audio');
+      buttons.forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.filter === filter); });
+    }
+    buttons.forEach(function (b) {
+      b.addEventListener('click', function () {
+        show(b.dataset.filter);
+        history.replaceState(null, '', b.dataset.filter === 'audio' ? '#audio' : location.pathname);
+      });
+    });
+    show(location.hash === '#audio' ? 'audio' : 'all');
+  })();
+</script>

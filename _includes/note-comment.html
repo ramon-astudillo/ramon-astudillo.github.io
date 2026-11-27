@@ -1,0 +1,23 @@
+{%- comment -%}A note's comment as paragraphs, with lines starting with ">" as quotes.
+include.text: the comment.{%- endcomment -%}
+{%- assign lines = include.text | escape | split: "
+" -%}
+{%- assign open = "" -%}
+{%- for raw in lines -%}
+  {%- assign line = raw | strip -%}
+  {%- assign head = line | slice: 0, 4 -%}
+  {%- if head == "&gt;" -%}
+    {%- assign text = line | remove_first: "&gt;" | strip -%}
+    {%- if open == "q" %}<br>{% else %}{% if open == "p" %}</p>{% endif %}<blockquote>{% endif -%}
+    {{ text }}
+    {%- assign open = "q" -%}
+  {%- elsif line == "" -%}
+    {%- if open == "q" %}</blockquote>{% elsif open == "p" %}</p>{% endif -%}
+    {%- assign open = "" -%}
+  {%- else -%}
+    {%- if open == "p" %}<br>{% else %}{% if open == "q" %}</blockquote>{% endif %}<p class="comment">{% endif -%}
+    {{ line }}
+    {%- assign open = "p" -%}
+  {%- endif -%}
+{%- endfor -%}
+{%- if open == "q" %}</blockquote>{% elsif open == "p" %}</p>{% endif -%}

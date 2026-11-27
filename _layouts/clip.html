@@ -60,7 +60,7 @@
   {% else %}<audio controls preload="metadata" src="{{ ep.media_url }}#t={{ clip.start | default: clip.t }}"></audio>{% endif %}
   {% if clip.quote %}<p class="transcript">{% if clip.before != "" %}…{{ clip.before }} {% endif %}<mark>{{ clip.quote }}</mark>{% if clip.after != "" %} {{ clip.after }}…{% endif %}</p>{% endif %}
   {% if clip.note and clip.note != "" %}<p class="note">{{ clip.note }}</p>{% endif %}
-  <footer>▶ {{ clip.time }} · <a href="{{ '/notes/audio/' | append: page.podcast | relative_url }}">all notes on this episode</a> · <a href="{{ '/notes/audio/' | relative_url }}">all podcasts</a> · <a href="{{ '/' | relative_url }}">Ramón Astudillo</a></footer>
+  <footer>▶ {{ clip.time }} · <a href="{{ '/notes/audio/' | append: page.podcast | relative_url }}">all notes on this episode</a> · <a href="{{ '/notes/#audio' | relative_url }}">all audio notes</a> · <a href="{{ '/' | relative_url }}">Ramón Astudillo</a></footer>
 </main>
 <aside class="siblings">
   <h2>This episode</h2>

@@ -2,5 +2,5 @@
 <nav class="site-tabs" aria-label="Site">
   <a href="{{ '/' | relative_url }}"{% if page.url == '/' %} aria-current="page"{% endif %}>Home</a>
   <a href="{{ '/pages/talks' | relative_url }}"{% if page.url contains '/pages/talks' %} aria-current="page"{% endif %}>Talks</a>
-  <a href="{{ '/notes/audio/' | relative_url }}"{% if page.url contains '/notes/audio' %} aria-current="page"{% endif %}>Podcast notes</a>
+  <a href="{{ '/notes/' | relative_url }}"{% if page.url == '/notes/' %} aria-current="page"{% endif %}><svg class="rss-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="19" r="2.5"/><path d="M2.5 9.5a12 12 0 0 1 12 12h-3a9 9 0 0 0-9-9zM2.5 3a18.5 18.5 0 0 1 18.5 18.5h-3A15.5 15.5 0 0 0 2.5 6z"/></svg>AI Notes</a>
 </nav>
