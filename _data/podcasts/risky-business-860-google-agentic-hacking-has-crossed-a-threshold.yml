@@ -1,0 +1,19 @@
+show: Risky Business
+title: 'Risky Business #860 -- Google: Agentic hacking has “crossed a threshold”'
+episode_url: https://risky.biz/RB860/
+media_url: https://dts.podtrac.com/redirect.mp3/media3.risky.biz/RB860.mp3
+clips:
+- t: 2080
+  start: 2080.2
+  end: 2095.6
+  time: '34:40'
+  title: 'Risky Business #860 -- Google: Agentic hacking has “crossed a threshold”'
+  note: ''
+  before: Extra bonus. Yeah I too know a lot what will you pay me? Yeah yeah exactly. What else have we
+    got here? Oh now
+  quote: we've had Anthropic and Google both announced that they are tightening up vulnerability disclosure
+    timelines right so they're like if vendors don't patch bugs within 30 days we're just going to disclose
+    details of the vulnerability.
+  author: ''
+  after: this is for us oldies right have been around for a while this is like just the disclosure thing
+    just never dies. Project zero they're moving
