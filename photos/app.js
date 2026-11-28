@@ -286,11 +286,10 @@ const Search = {
         if (f.label === "move" && !(s && s.move)) return false;
         if (f.label === "date" && !(s && s.date)) return false;
         if (f.label === "place" && !(s && s.place)) return false;
-        if (f.hidedel && s && s.del) return false;
         if (f.label === "tagged" && !(s && s.tags.size)) return false;
       }
-      if (!f.label || f.label !== "del") {
-      }
+      // Marked to delete: hidden everywhere unless asked for.
+      if (s && s.del && !f.showdel && f.label !== "del") return false;
       if (re && !re.test(r.p)) return false;
       return true;
     });
@@ -540,6 +539,7 @@ const UI = {
 
   grid(rows) {
     this.list = rows;
+    this.gridRows = rows;
     const g = $("#grid");
     g.innerHTML = "";
     if (this.observer) this.observer.disconnect();
@@ -560,21 +560,38 @@ const UI = {
         (r.k === "video" ? '<span class="badge vid">▶</span>' : "") +
         (s && s.fav ? '<span class="badge fav">★</span>' : "") +
         (s && s.del ? '<span class="badge del">🗑</span>' : "");
-      tile.onclick = () => this.open(i);
+      tile.onclick = () => this.open(i, rows);
       g.appendChild(tile);
       this.observer.observe(tile);
     });
   },
 
-  // Re-draws the badges of one tile after a label changes.
-  refreshTile(i) {
-    const tile = $('#grid .tile[data-i="' + i + '"]');
-    if (!tile) return;
-    const r = this.list[i];
+  // Re-draws the badges of the search tiles showing this photo after a label
+  // changes. A photo just marked to delete leaves the results (unless the
+  // search shows them) when the viewer closes, so swiping is not disturbed.
+  refreshTile(r) {
     const s = Labels.get(r.h);
-    $$(".badge.fav,.badge.del", tile).forEach((b) => b.remove());
-    if (s && s.fav) tile.insertAdjacentHTML("beforeend", '<span class="badge fav">★</span>');
-    if (s && s.del) tile.insertAdjacentHTML("beforeend", '<span class="badge del">🗑</span>');
+    $$("#grid .tile").forEach((tile) => {
+      if (!this.gridRows || this.gridRows[tile.dataset.i].h !== r.h) return;
+      $$(".badge.fav,.badge.del", tile).forEach((b) => b.remove());
+      if (s && s.fav) tile.insertAdjacentHTML("beforeend", '<span class="badge fav">★</span>');
+      if (s && s.del) tile.insertAdjacentHTML("beforeend", '<span class="badge del">🗑</span>');
+    });
+  },
+
+  // After the viewer closes: photos marked to delete disappear from Today and
+  // from the search results (unless the search shows them).
+  hideDeleted() {
+    const f = Search.filters();
+    const showdel = f.showdel || f.label === "del";
+    $$("#grid .tile").forEach((tile) => {
+      const s = this.gridRows && Labels.get(this.gridRows[tile.dataset.i].h);
+      tile.hidden = !!(s && s.del && !showdel);
+    });
+    if (this.delChanged) {
+      this.delChanged = false;
+      this.today();
+    }
   },
 
   open(i, list) {
@@ -589,6 +606,7 @@ const UI = {
     $("#viewer").hidden = true;
     document.body.classList.remove("noscroll");
     $("#v-media").innerHTML = "";
+    this.hideDeleted();
   },
 
   step(d) {
@@ -655,7 +673,8 @@ const UI = {
     const r = this.list[this.at];
     Labels.add(r, op, fields);
     this.drawInfo();
-    this.refreshTile(this.at);
+    this.refreshTile(r);
+    if (op === "del") this.delChanged = true;
   },
 
   // A small form sheet for date / place / move / tag.
@@ -769,6 +788,7 @@ const UI = {
     let f = null;
     try { f = JSON.parse(lsGet("photos_filters") || "null"); } catch (e) { f = null; }
     if (!f) return;
+    f.showdel = false;
     $$("#filters [name]").forEach((el) => {
       if (!(el.name in f)) return;
       if (el.type === "checkbox") el.checked = f[el.name];

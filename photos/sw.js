@@ -1,6 +1,6 @@
 // App-shell cache so the page opens offline. Dropbox calls pass straight
 // through (other origin); the photo list and thumbnails live in IndexedDB.
-const CACHE_NAME = "photos-shell-v6";
+const CACHE_NAME = "photos-shell-v7";
 const SHELL_FILES = ["./", "./index.html", "./config.js", "./dropbox.js", "./app.js",
   "./manifest.json", "./icon-192.png", "./icon-512.png"];
 
