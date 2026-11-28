@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.dropboxusercontent.com; media-src https://*.dropboxusercontent.com; connect-src 'self' https://api.dropboxapi.com https://content.dropboxapi.com; manifest-src 'self'; worker-src 'self'; form-action 'none'; base-uri 'none'">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2b6f6a">
+<title>Photos</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<style>
+  :root {
+    --bg: #f5f4f1; --fg: #1d1d1b; --muted: #6b6a66; --card: #ffffff; --line: #dedbd4;
+    --accent: #2b6f6a; --accent-fg: #ffffff; --fav: #e0a100; --del: #c0392b; --tile: #e6e3dc;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #151514; --fg: #ecebe7; --muted: #9b9a95; --card: #1f1f1d; --line: #34332f;
+      --accent: #5fb3ab; --accent-fg: #0d1b1a; --tile: #2a2a27; }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--fg);
+    font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  body.noscroll { overflow: hidden; }
+  button, input, select { font: inherit; color: inherit; }
+  button { cursor: pointer; border: 1px solid var(--line); background: var(--card); border-radius: 10px; padding: 8px 12px; }
+  button.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+  button:disabled { opacity: .6; }
+  input, select { width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
+  [hidden] { display: none !important; }
+  .muted { color: var(--muted); }
+  .small { font-size: 13px; }
+  .warn { color: var(--del); }
+  header { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 8px;
+    padding: 10px 16px; padding-top: max(10px, env(safe-area-inset-top)); background: var(--bg); border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 18px; margin: 0 auto 0 0; }
+  nav { display: flex; gap: 6px; }
+  #gear { position: relative; }
+  #gear.has-update::after { content: ""; position: absolute; top: 3px; right: 3px; width: 8px; height: 8px;
+    border-radius: 50%; background: #e0a100; }
+  button.update-ready { background: #e0a100; color: #000; border-color: #e0a100; }
+  nav button.on { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+  #sync { min-width: 40px; }
+  main { padding: 12px 16px 40px; max-width: 1100px; margin: 0 auto; }
+  #status, #connect { padding: 40px 16px; max-width: 480px; margin: 0 auto; text-align: center; }
+  #daily h2 { font-size: 18px; margin: 4px 0 10px; }
+  .daily-photo { padding: 0; border: 0; background: var(--tile); width: 100%; border-radius: 12px; overflow: hidden; display: block; min-height: 200px; }
+  .daily-photo img { width: 100%; display: block; max-height: 70vh; object-fit: contain; }
+  #filters { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 12px; }
+  #filters .wide { grid-column: 1 / -1; }
+  #filters label.check { display: flex; align-items: center; gap: 8px; }
+  #filters label.check input { width: auto; }
+  #filters .row { grid-column: 1 / -1; display: flex; gap: 8px; }
+  @media (min-width: 700px) { #filters { grid-template-columns: repeat(4, 1fr); } }
+  .resultbar { display: flex; align-items: center; gap: 10px; margin: 6px 0 10px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 4px; }
+  .grid.small { grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); }
+  .tile { position: relative; padding: 0; border: 0; border-radius: 6px; overflow: hidden; aspect-ratio: 1; background: var(--tile); }
+  .tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .tile.nothumb::after { content: "no preview"; position: absolute; inset: 0; display: grid; place-items: center; font-size: 12px; color: var(--muted); }
+  .badge { position: absolute; font-size: 13px; padding: 1px 5px; border-radius: 8px; background: rgba(0,0,0,.55); color: #fff; }
+  .badge.fav { top: 4px; right: 4px; color: #ffd24a; }
+  .badge.del { top: 4px; left: 4px; }
+  .badge.vid { bottom: 4px; left: 4px; }
+  .badge.yr { bottom: 4px; right: 4px; }
+  #viewer { position: fixed; inset: 0; z-index: 20; background: #000; color: #eee; display: flex; flex-direction: column; }
+  #viewer .top { display: flex; align-items: center; gap: 8px; padding: 8px 12px; padding-top: max(8px, env(safe-area-inset-top)); }
+  #viewer .top button, #viewer .actions button { background: #222; border-color: #333; color: #eee; }
+  #v-pos { margin-right: auto; font-size: 14px; color: #aaa; }
+  #v-media { flex: 1; min-height: 0; display: grid; place-items: center; touch-action: pan-y pinch-zoom; }
+  #v-media img, #v-media video { max-width: 100%; max-height: 100%; object-fit: contain; }
+  #v-media .loading { color: #aaa; padding: 20px; text-align: center; }
+  #viewer .panel { background: #111; padding: 10px 12px; padding-bottom: max(10px, env(safe-area-inset-bottom)); max-height: 42vh; overflow-y: auto; }
+  #viewer .actions { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+  #viewer #v-fav.on { background: var(--fav); color: #000; border-color: var(--fav); }
+  #viewer #v-del.on { background: var(--del); color: #fff; border-color: var(--del); }
+  #v-info .when { font-weight: 600; }
+  #v-info .muted { color: #999; }
+  #v-info .path { word-break: break-all; font-size: 13px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+  .chip { background: #2c4a47; color: #e6f2f0; border-radius: 12px; padding: 2px 4px 2px 10px; font-size: 14px; }
+  .chip button { border: 0; background: none; color: inherit; padding: 0 6px; }
+  #sheet { position: fixed; inset: 0; z-index: 30; background: rgba(0,0,0,.5); display: flex; align-items: flex-end; justify-content: center; }
+  #sheet form { background: var(--card); color: var(--fg); width: 100%; max-width: 520px; border-radius: 16px 16px 0 0; padding: 16px;
+    padding-bottom: max(16px, env(safe-area-inset-bottom)); display: grid; gap: 10px; }
+  #sheet h3 { margin: 0; }
+  #sheet p { margin: 0; }
+  #sheet .row { display: flex; gap: 8px; }
+  #toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 40; background: #333; color: #fff;
+    padding: 10px 16px; border-radius: 10px; max-width: calc(100% - 32px); }
+  #settings-body h3 { margin: 18px 0 4px; font-size: 16px; }
+  #settings-body p { margin: 4px 0; }
+</style>
+</head>
+<body>
+<div id="status">Loading…</div>
+<div id="connect" hidden></div>
+
+<div id="app" hidden>
+  <header>
+    <h1>Photos</h1>
+    <nav>
+      <button data-view="today">Today</button>
+      <button data-view="search">Search</button>
+      <button data-view="settings" id="gear" aria-label="Settings">⚙</button>
+    </nav>
+    <button id="sync" title="Labels saved">✓</button>
+  </header>
+  <main>
+    <section id="view-today" class="view">
+      <div id="daily"></div>
+      <div id="daily-more"></div>
+    </section>
+
+    <section id="view-search" class="view" hidden>
+      <form id="filters" autocomplete="off">
+        <input name="from" placeholder="From year" inputmode="numeric">
+        <input name="to" placeholder="To year" inputmode="numeric">
+        <select name="month">
+          <option value="">Any month</option>
+          <option value="01">January</option><option value="02">February</option><option value="03">March</option>
+          <option value="04">April</option><option value="05">May</option><option value="06">June</option>
+          <option value="07">July</option><option value="08">August</option><option value="09">September</option>
+          <option value="10">October</option><option value="11">November</option><option value="12">December</option>
+        </select>
+        <input name="day" placeholder="Day of month" inputmode="numeric">
+        <select name="album"></select>
+        <select name="kind">
+          <option value="">Photos and videos</option><option value="photo">Photos</option><option value="video">Videos</option>
+        </select>
+        <select name="label">
+          <option value="">Any label</option>
+          <option value="fav">★ Favourites</option>
+          <option value="del">🗑 Marked to delete</option>
+          <option value="move">Move requested</option>
+          <option value="date">Date set by hand</option>
+          <option value="place">With a place</option>
+          <option value="tagged">Tagged</option>
+          <option value="none">No labels</option>
+        </select>
+        <select name="tag"></select>
+        <input name="place" placeholder="Place contains">
+        <select name="pat"></select>
+        <select name="dev"></select>
+        <select name="sort">
+          <option value="new">Newest first</option><option value="old">Oldest first</option><option value="random">Random</option>
+        </select>
+        <input name="regex" class="wide" placeholder="File name or path pattern (regex), e.g. ^/Pictures/YYYY/0[78]">
+        <label class="check"><input type="checkbox" name="undated"> Date unknown only</label>
+        <label class="check"><input type="checkbox" name="hidedel" checked> Hide 🗑</label>
+        <div class="row"><button type="submit" class="primary">Search</button><button type="reset">Clear</button></div>
+      </form>
+      <div class="resultbar"><span id="result-count" class="muted"></span><button id="resample" hidden>New sample</button></div>
+      <div id="grid" class="grid"></div>
+    </section>
+
+    <section id="view-settings" class="view" hidden>
+      <div id="settings-body"></div>
+    </section>
+  </main>
+</div>
+
+<div id="viewer" hidden>
+  <div class="top">
+    <span id="v-pos"></span>
+    <button id="v-prev" aria-label="Previous">‹</button>
+    <button id="v-next" aria-label="Next">›</button>
+    <button id="v-close" aria-label="Close">✕</button>
+  </div>
+  <div id="v-media"></div>
+  <div class="panel">
+    <div class="actions">
+      <button id="v-fav">★ Favourite</button>
+      <button id="v-del">🗑 To delete</button>
+      <button data-ask="tag">+ Tag</button>
+      <button data-ask="date">Date</button>
+      <button data-ask="place">Place</button>
+      <button data-ask="move">Move…</button>
+    </div>
+    <div id="v-info"></div>
+  </div>
+</div>
+
+<div id="sheet" hidden></div>
+<div id="toast" hidden></div>
+<datalist id="dl-tags"></datalist>
+<datalist id="dl-places"></datalist>
+<datalist id="dl-folders"></datalist>
+
+<script src="config.js"></script>
+<script src="dropbox.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
