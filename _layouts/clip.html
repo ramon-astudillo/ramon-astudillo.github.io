@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% if clip.title %}{{ clip.title }}{% else %}{{ ep.show }}{% endif %} @ {{ clip.time }}</title>
+  <title>{% if clip.title %}{{ clip.title | escape }}{% else %}{{ ep.show | escape }}{% endif %} @ {{ clip.time | escape }}</title>
   <meta name="description" content="{{ clip.quote | default: clip.note | escape }}">
   <meta property="og:type" content="article">
   <meta property="og:site_name" content="Podcast notes · Ramón Astudillo">
-  <meta property="og:title" content="{% if clip.title %}{{ clip.title | escape }} · {{ ep.show | escape }}{% else %}{{ ep.show | escape }} · {{ ep.title | escape }}{% endif %} @ {{ clip.time }}">
+  <meta property="og:title" content="{% if clip.title %}{{ clip.title | escape }} · {{ ep.show | escape }}{% else %}{{ ep.show | escape }} · {{ ep.title | escape }}{% endif %} @ {{ clip.time | escape }}">
   <meta property="og:description" content="“{{ clip.quote | default: clip.note | escape }}”">
   <meta property="og:url" content="{{ page.url | absolute_url }}">
   {% if clip.quote %}<meta property="og:image" content="{{ card }}">
@@ -52,24 +52,24 @@
 <body>
 <div class="layout">
 <main>
-  <div class="meta">{{ ep.show }} · <a href="{{ ep.episode_url }}">episode page</a></div>
-  <h1>{{ clip.title | default: ep.title }}</h1>{% if clip.title and clip.title != ep.title %}
-  <div class="meta">{{ ep.title }}</div>{% endif %}
+  <div class="meta">{{ ep.show | escape }} · <a href="{{ ep.episode_url | escape }}">episode page</a></div>
+  <h1>{{ clip.title | default: ep.title | escape }}</h1>{% if clip.title and clip.title != ep.title %}
+  <div class="meta">{{ ep.title | escape }}</div>{% endif %}
   {% if ep.media_url contains "youtube.com/watch?v=" %}{% assign start = clip.start | default: clip.t | floor %}
-  <div class="video"><iframe src="https://www.youtube-nocookie.com/embed/{{ ep.media_url | split: 'v=' | last }}?start={{ start }}{% if clip.end %}&amp;end={{ clip.end | ceil }}{% endif %}&amp;rel=0" title="{{ ep.title | escape }}" allow="encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div>
-  {% else %}<audio controls preload="metadata" src="{{ ep.media_url }}#t={{ clip.start | default: clip.t }}"></audio>{% endif %}
-  {% if clip.quote %}<p class="transcript">{% if clip.before != "" %}…{{ clip.before }} {% endif %}<mark>{{ clip.quote }}</mark>{% if clip.after != "" %} {{ clip.after }}…{% endif %}</p>{% endif %}
-  {% if clip.note and clip.note != "" %}<p class="note">{{ clip.note }}</p>{% endif %}
-  <footer>▶ {{ clip.time }} · <a href="{{ '/notes/audio/' | append: page.podcast | relative_url }}">all notes on this episode</a> · <a href="{{ '/notes/#audio' | relative_url }}">all audio notes</a> · <a href="{{ '/' | relative_url }}">Ramón Astudillo</a></footer>
+  <div class="video"><iframe src="https://www.youtube-nocookie.com/embed/{{ ep.media_url | split: 'v=' | last | url_encode }}?start={{ start | plus: 0 }}{% if clip.end %}&amp;end={{ clip.end | ceil }}{% endif %}&amp;rel=0" title="{{ ep.title | escape }}" allow="encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div>
+  {% else %}<audio controls preload="metadata" src="{{ ep.media_url | escape }}#t={{ clip.start | default: clip.t | plus: 0 }}"></audio>{% endif %}
+  {% if clip.quote %}<p class="transcript">{% if clip.before != "" %}…{{ clip.before | escape }} {% endif %}<mark>{{ clip.quote | escape }}</mark>{% if clip.after != "" %} {{ clip.after | escape }}…{% endif %}</p>{% endif %}
+  {% if clip.note and clip.note != "" %}<p class="note">{{ clip.note | escape }}</p>{% endif %}
+  <footer>▶ {{ clip.time | escape }} · <a href="{{ '/notes/audio/' | append: page.podcast | relative_url }}">all notes on this episode</a> · <a href="{{ '/notes/#audio' | relative_url }}">all audio notes</a> · <a href="{{ '/' | relative_url }}">Ramón Astudillo</a></footer>
 </main>
 <aside class="siblings">
   <h2>This episode</h2>
   <div class="list">
   {% for c in ep.clips %}{% capture what %}{% if c.note and c.note != "" %}{{ c.note }}{% else %}{{ c.quote }}{% endif %}{% endcapture %}
   <a class="sibling{% if c.t == clip.t %} current{% endif %}" href="{{ '/notes/audio/' | append: page.podcast | append: '/' | append: c.t | relative_url }}">
-    {% if c.quote %}<img src="{{ '/notes/audio/' | append: page.podcast | append: '/' | append: c.t | append: '.png' | relative_url }}" alt="" loading="lazy">{% else %}<span class="noimg">{{ what | truncatewords: 12 }}</span>{% endif %}
-    <span class="when">▶ {{ c.time }}</span>
-    {% if c.quote %}<span class="what">{{ what | strip | truncatewords: 10 }}</span>{% endif %}
+    {% if c.quote %}<img src="{{ '/notes/audio/' | append: page.podcast | append: '/' | append: c.t | append: '.png' | relative_url }}" alt="" loading="lazy">{% else %}<span class="noimg">{{ what | truncatewords: 12 | escape }}</span>{% endif %}
+    <span class="when">▶ {{ c.time | escape }}</span>
+    {% if c.quote %}<span class="what">{{ what | strip | truncatewords: 10 | escape }}</span>{% endif %}
   </a>
   {% endfor %}
   </div>
@@ -81,7 +81,7 @@
 </div>
 <script>
   // Re-seek once playing in case the browser ignored the #t= offset.
-  const audio = document.querySelector('audio'), t = {{ clip.start | default: clip.t }};
+  const audio = document.querySelector('audio'), t = {{ clip.start | default: clip.t | plus: 0 }};
   if (audio) audio.addEventListener('playing', () => {
     if (audio.currentTime < t - 2) audio.currentTime = t;
   }, { once: true });

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{ page.title }}</title>
+  <title>{{ page.title | escape }}</title>
   <meta property="og:type" content="article">
   <meta property="og:site_name" content="Notes · Ramón Astudillo">
   <meta property="og:title" content="{{ page.title | escape }}">
@@ -32,11 +32,11 @@
 </head>
 <body>
 <main>
-  <h1>{{ page.title }}</h1>
+  <h1>{{ page.title | escape }}</h1>
   {% if page.comment and page.comment != "" %}<p class="comment">{{ page.comment | escape }}</p>{% endif %}
   <a class="card" href="{{ page.link | escape }}">
     {% if page.image and page.image != "" %}<img src="{{ page.image | escape }}" alt="">{% endif %}
-    <div><div class="site">{{ page.site_name }}</div><div class="url">{{ page.link | escape }}</div></div>
+    <div><div class="site">{{ page.site_name | escape }}</div><div class="url">{{ page.link | escape }}</div></div>
   </a>
   <footer>{{ page.date | date: "%-d %b %Y" }} · {% if page.bsky and page.bsky != "" %}<a href="{{ page.bsky | escape }}">Bluesky</a> · {% endif %}<a href="{{ '/notes/ai_notes.xml' | relative_url }}">RSS</a> · <a href="{{ '/' | relative_url }}">Ramón Astudillo</a></footer>
 </main>

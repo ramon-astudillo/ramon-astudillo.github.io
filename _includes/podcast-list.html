@@ -17,7 +17,7 @@ lists that one's notes separately).{%- endcomment -%}
   {%- assign key = parts[1] -%}
   {%- assign ep = site.data.podcasts[key] -%}
   {%- assign n = ep.clips | size %}
-  <li><a href="{{ '/notes/audio/' | append: key | relative_url }}">{{ ep.title }}</a>
-    <span class="meta">{% if parts[0] != "" %}<time datetime="{{ parts[0] | date: '%Y-%m-%d' }}">{{ parts[0] | date: "%-d %b %Y" }}</time> · {% endif %}{{ ep.show }} · {{ n }} {% if n == 1 %}note{% else %}notes{% endif %}</span></li>
+  <li><a href="{{ '/notes/audio/' | append: key | relative_url }}">{{ ep.title | escape }}</a>
+    <span class="meta">{% if parts[0] != "" %}<time datetime="{{ parts[0] | date: '%Y-%m-%d' }}">{{ parts[0] | date: "%-d %b %Y" }}</time> · {% endif %}{{ ep.show | escape }} · {{ n }} {% if n == 1 %}note{% else %}notes{% endif %}</span></li>
 {%- endfor %}
 </ul>
