@@ -914,7 +914,13 @@ function connectScreen() {
 // Chrome's "Desktop site" lays the page out 980 px wide and shrinks it: say so.
 function checkDesktopMode() {
   const coarse = window.matchMedia("(pointer: coarse)").matches;
-  $("#desktop-mode").hidden = !(coarse && window.innerWidth > 1.5 * Math.min(screen.width, screen.height));
+  const banner = $("#desktop-mode");
+  banner.hidden = !(coarse && window.innerWidth > 1.5 * Math.min(screen.width, screen.height));
+  if (banner.hidden) return;
+  banner.textContent = window.matchMedia("(display-mode: standalone)").matches
+    ? "This app was added to the home screen while Chrome was in desktop mode, so everything is tiny. " +
+      "Remove it from the home screen, open the page in Chrome, untick Desktop site in the ⋮ menu, then add it again."
+    : "Chrome is showing this as a desktop site, so everything is tiny. Open Chrome's ⋮ menu and untick Desktop site.";
 }
 
 async function start() {

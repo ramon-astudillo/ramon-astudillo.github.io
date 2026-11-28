@@ -24,5 +24,5 @@ const CONFIG = {
   SAMPLE_SIZE: 120,
 
   // Bump with sw.js CACHE_NAME on every deploy that changes these files.
-  APP_VERSION: "4",
+  APP_VERSION: "5",
 };
