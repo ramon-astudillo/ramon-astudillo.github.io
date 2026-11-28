@@ -550,7 +550,7 @@ const UI = {
         this.observer.unobserve(tile);
         Thumbs.want($("img", tile), rows[tile.dataset.i]);
       }
-    }, { rootMargin: "400px" });
+    }, { root: $("main"), rootMargin: "400px" });
     rows.forEach((r, i) => {
       const s = Labels.get(r.h);
       const tile = document.createElement("button");
@@ -811,7 +811,7 @@ const UI = {
       const shown = rows.length > 60 ? sample(rows, 60).sort((a, b) => (dateOf(a) < dateOf(b) ? -1 : 1)) : rows;
       strip.innerHTML = "<h3>More from this day (" + rows.length + ")</h3>";
       const g = document.createElement("div");
-      g.className = "grid small";
+      g.className = "strip";
       shown.forEach((x, i) => {
         const tile = document.createElement("button");
         tile.className = "tile";
@@ -911,7 +911,14 @@ function connectScreen() {
   $$("[data-k]", box).forEach((b) => (b.onclick = () => Auth[b.dataset.k].startLogin()));
 }
 
+// Chrome's "Desktop site" lays the page out 980 px wide and shrinks it: say so.
+function checkDesktopMode() {
+  const coarse = window.matchMedia("(pointer: coarse)").matches;
+  $("#desktop-mode").hidden = !(coarse && window.innerWidth > 1.5 * Math.min(screen.width, screen.height));
+}
+
 async function start() {
+  checkDesktopMode();
   Labels.init();
   if (!Backend.mock) {
     try {
