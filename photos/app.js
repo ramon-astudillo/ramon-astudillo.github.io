@@ -917,10 +917,10 @@ function checkDesktopMode() {
   const banner = $("#desktop-mode");
   banner.hidden = !(coarse && window.innerWidth > 1.5 * Math.min(screen.width, screen.height));
   if (banner.hidden) return;
-  banner.textContent = window.matchMedia("(display-mode: standalone)").matches
-    ? "This app was added to the home screen while Chrome was in desktop mode, so everything is tiny. " +
-      "Remove it from the home screen, open the page in Chrome, untick Desktop site in the ⋮ menu, then add it again."
-    : "Chrome is showing this as a desktop site, so everything is tiny. Open Chrome's ⋮ menu and untick Desktop site.";
+  // Chrome keeps "Desktop site" per site (all of ramon-astudillo.github.io)
+  // and applies it to apps added to the home screen too.
+  banner.textContent = "Chrome shows this site as a desktop site, so everything is tiny. In Chrome: ⋮ → Settings → " +
+    "Site settings → Desktop site: remove this site from the list (or turn Desktop site off), then reopen the app.";
 }
 
 async function start() {
